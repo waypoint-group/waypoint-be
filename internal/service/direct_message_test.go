@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"sort"
 	"testing"
 	"time"
@@ -126,27 +127,16 @@ func TestDirectMessage_SelectMissing(t *testing.T) {
 }
 
 func TestDirectMessage_GetPage(t *testing.T) {
-	store := &directMessageStoreStub{}
+	authorID, recipientID := uuid.NewV7(), uuid.NewV7()
+	firstID, secondID, thirdID := uuid.NewV7(), uuid.NewV7(), uuid.NewV7()
+	createdAt := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	store := &directMessageStoreStub{directMessages: []sqlc.DirectMessage{
+		{ID: firstID, AuthorID: authorID, RecipientID: recipientID, Body: "first", CreatedAt: pgtype.Timestamptz{Time: createdAt, Valid: true}},
+		{ID: secondID, AuthorID: recipientID, RecipientID: authorID, Body: "second", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(time.Second), Valid: true}},
+		{ID: thirdID, AuthorID: authorID, RecipientID: recipientID, Body: "third", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(2 * time.Second), Valid: true}},
+		{ID: uuid.NewV7(), AuthorID: uuid.NewV7(), RecipientID: uuid.NewV7(), Body: "other conversation", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(3 * time.Second), Valid: true}},
+	}}
 	messageService := service.NewDirectMessageService(store)
-	authorID := uuid.NewV7()
-	recipientID := uuid.NewV7()
-
-	first, err := messageService.CreateDirectMessage(context.Background(), authorID, recipientID, "first")
-	if err != nil {
-		t.Fatalf("CreateDirectMessage returned error: %v", err)
-	}
-	second, err := messageService.CreateDirectMessage(context.Background(), recipientID, authorID, "second")
-	if err != nil {
-		t.Fatalf("CreateDirectMessage returned error: %v", err)
-	}
-	third, err := messageService.CreateDirectMessage(context.Background(), authorID, recipientID, "third")
-	if err != nil {
-		t.Fatalf("CreateDirectMessage returned error: %v", err)
-	}
-	_, err = messageService.CreateDirectMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "other conversation")
-	if err != nil {
-		t.Fatalf("CreateDirectMessage returned error: %v", err)
-	}
 
 	messages, err := messageService.GetDirectMessagePage(context.Background(), authorID, recipientID, 2, 1)
 	if err != nil {
@@ -155,28 +145,28 @@ func TestDirectMessage_GetPage(t *testing.T) {
 	if len(messages) != 2 {
 		t.Fatalf("expected 2 messages, got %d", len(messages))
 	}
-	if messages[0].ID != second.ID || messages[0].Body != second.Body || messages[1].ID != first.ID || messages[1].Body != first.Body {
-		t.Fatalf("unexpected messages: %+v", messages)
+
+	expectedMessages := []service.DirectMessage{
+		{ID: secondID, AuthorID: recipientID, RecipientID: authorID, Body: "second", CreatedAt: createdAt.Add(time.Second)},
+		{ID: firstID, AuthorID: authorID, RecipientID: recipientID, Body: "first", CreatedAt: createdAt},
 	}
-	if third.ID == messages[0].ID || third.ID == messages[1].ID {
-		t.Fatal("pagination returned a message outside the requested page")
+	if !slices.Equal(messages, expectedMessages) {
+		t.Fatalf("expected messages %+v, got %+v", expectedMessages, messages)
 	}
 }
 
 func TestDirectMessage_Update(t *testing.T) {
-	store := &directMessageStoreStub{}
+	messageID, authorID, recipientID := uuid.NewV7(), uuid.NewV7(), uuid.NewV7()
+	store := &directMessageStoreStub{directMessages: []sqlc.DirectMessage{
+		{ID: messageID, AuthorID: authorID, RecipientID: recipientID, Body: "before"},
+	}}
 	messageService := service.NewDirectMessageService(store)
 
-	created, err := messageService.CreateDirectMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "before")
-	if err != nil {
-		t.Fatalf("CreateDirectMessage returned error: %v", err)
-	}
-
-	updated, err := messageService.UpdateDirectMessage(context.Background(), created.ID, "after")
+	updated, err := messageService.UpdateDirectMessage(context.Background(), messageID, "after")
 	if err != nil {
 		t.Fatalf("UpdateDirectMessage returned error: %v", err)
 	}
-	if updated.ID != created.ID || updated.Body != "after" || updated.AuthorID != created.AuthorID || updated.RecipientID != created.RecipientID {
+	if updated.ID != messageID || updated.Body != "after" || updated.AuthorID != authorID || updated.RecipientID != recipientID {
 		t.Fatalf("unexpected updated message: %+v", updated)
 	}
 }
@@ -191,15 +181,13 @@ func TestDirectMessage_UpdateMissing(t *testing.T) {
 }
 
 func TestDirectMessage_Delete(t *testing.T) {
-	store := &directMessageStoreStub{}
+	messageID := uuid.NewV7()
+	store := &directMessageStoreStub{directMessages: []sqlc.DirectMessage{
+		{ID: messageID, Body: "to delete"},
+	}}
 	messageService := service.NewDirectMessageService(store)
 
-	created, err := messageService.CreateDirectMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "to delete")
-	if err != nil {
-		t.Fatalf("CreateDirectMessage returned error: %v", err)
-	}
-
-	if err := messageService.DeleteDirectMessage(context.Background(), created.ID); err != nil {
+	if err := messageService.DeleteDirectMessage(context.Background(), messageID); err != nil {
 		t.Fatalf("DeleteDirectMessage returned error: %v", err)
 	}
 	if len(store.directMessages) != 0 {
