@@ -59,7 +59,7 @@ func TestUserServiceCreatedAndSelectedUserMatch(t *testing.T) {
 		createdUser.DisplayName == selectedUser.DisplayName &&
 		createdUser.CreatedAt.Unix() == selectedUser.CreatedAt.Unix()
 	if !usersMatch {
-		t.Fatalf("unexpected user: %+v", createdUser)
+		t.Fatalf("expected %+v, got %+v", createdUser, selectedUser)
 	}
 
 	now := time.Now()
