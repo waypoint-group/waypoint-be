@@ -7,9 +7,10 @@ import (
 
 // Services groups the application's domain services.
 type Services struct {
-	Users    *UserService
-	Channels *ChannelService
-	Messages *MessageService
+	Users           *UserService
+	Channels        *ChannelService
+	ChannelMessages *ChannelMessageService
+	DirectMessages  *DirectMessageService
 }
 
 // NotFoundError indicates that a requested domain resource does not exist.
@@ -37,8 +38,9 @@ func (e AlreadyExistsError) Error() string {
 // New constructs the application's domain services.
 func New(database *db.Database) *Services {
 	return &Services{
-		Users:    NewUserService(database),
-		Channels: NewChannelService(database),
-		Messages: NewMessageService(database),
+		Users:           NewUserService(database),
+		Channels:        NewChannelService(database),
+		ChannelMessages: NewChannelMessageService(database),
+		DirectMessages:  NewDirectMessageService(database),
 	}
 }

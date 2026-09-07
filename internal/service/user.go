@@ -26,7 +26,7 @@ type UserService struct {
 
 // User is a user in the Waypoint domain.
 type User struct {
-	// ID is the user's UUID.
+	// ID is the unique identifier of the user.
 	ID uuid.UUID
 	// Email is the user's email address.
 	Email string
@@ -42,7 +42,7 @@ func NewUserService(store UserStore) *UserService {
 	}
 }
 
-// CreateUser creates a user with the supplied email address and display name.
+// CreateUser creates a new user and returns it.
 func (s *UserService) CreateUser(ctx context.Context, email string, displayName string) (*User, error) {
 	user, err := s.store.CreateUser(ctx, sqlc.CreateUserParams{
 		ID:          uuid.NewV7(),
@@ -68,8 +68,8 @@ func (s *UserService) CreateUser(ctx context.Context, email string, displayName 
 }
 
 // GetUser retrieves a user by UUID.
-func (s *UserService) GetUser(ctx context.Context, ID uuid.UUID) (*User, error) {
-	user, err := s.store.SelectUser(ctx, ID)
+func (s *UserService) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
+	user, err := s.store.SelectUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, NotFoundError{
@@ -95,7 +95,7 @@ func (s *UserService) ListUsers(ctx context.Context) ([]User, error) {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
 
-	var result []User
+	result := make([]User, 0, len(users))
 	for _, user := range users {
 		result = append(result, User{
 			ID:          user.ID,
