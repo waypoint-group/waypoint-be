@@ -12,12 +12,20 @@ import (
 	"github.com/waypoint-group/waypoint-be/internal/service"
 )
 
+// Waypoint application encapsulates the following:
+//   - database
+//   - services
+//   - HTTP handler
 type Waypoint struct {
+	// Database is the application's PostgreSQL database connection.
 	Database *db.Database
+	// Services contains the application's domain services.
 	Services *service.Services
-	Handler  http.Handler
+	// Handler serves the application's HTTP API.
+	Handler http.Handler
 }
 
+// New constructs a Waypoint application from the supplied configuration.
 func New(cfg *Config) (*Waypoint, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

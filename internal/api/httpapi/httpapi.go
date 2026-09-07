@@ -15,11 +15,13 @@ import (
 
 const maxRequestBodyBytes = 1 << 20
 
+// Handler serves the Waypoint HTTP API.
 type Handler struct {
 	services *service.Services
 	database *db.Database
 }
 
+// New constructs an HTTP API handler backed by the supplied database and services.
 func New(database *db.Database, services *service.Services) *Handler {
 	return &Handler{
 		services: services,
@@ -27,6 +29,7 @@ func New(database *db.Database, services *service.Services) *Handler {
 	}
 }
 
+// Routes returns the HTTP handler containing all Waypoint API routes.
 func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 
