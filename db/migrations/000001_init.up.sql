@@ -44,9 +44,11 @@ CREATE TABLE messages (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Useful for quick message retrieval by channel and timestamp.
 CREATE INDEX messages_channel_created_idx
     ON messages (channel_id, created_at DESC);
 
+-- Useful for finding threads.
 CREATE INDEX messages_thread_created_idx
     ON messages (thread_root_id, created_at)
     WHERE thread_root_id IS NOT NULL;
