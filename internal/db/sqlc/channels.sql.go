@@ -18,8 +18,8 @@ ON CONFLICT DO NOTHING
 `
 
 type AddChannelMemberParams struct {
-	ChannelID uuid.UUID `json:"channel_id"`
-	UserID    uuid.UUID `json:"user_id"`
+	ChannelID uuid.UUID
+	UserID    uuid.UUID
 }
 
 func (q *Queries) AddChannelMember(ctx context.Context, arg AddChannelMemberParams) error {
@@ -35,9 +35,9 @@ RETURNING id, workspace_id, name, created_at
 `
 
 type CreateChannelParams struct {
-	ID          uuid.UUID `json:"id"`
-	WorkspaceID uuid.UUID `json:"workspace_id"`
-	Name        string    `json:"name"`
+	ID          uuid.UUID
+	WorkspaceID uuid.UUID
+	Name        string
 }
 
 func (q *Queries) CreateChannel(ctx context.Context, arg CreateChannelParams) (Channel, error) {
