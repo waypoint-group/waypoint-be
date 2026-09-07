@@ -7,7 +7,8 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/waypoint-group/waypoint-be/db/migrations"
 )
 
 type MigrateCommand struct {
@@ -19,7 +20,12 @@ func (cmd *MigrateCommand) Run() (runErr error) {
 }
 
 func Migrate(databaseURL string) (migrateErr error) {
-	m, err := migrate.New("file://db/migrations", databaseURL)
+	source, err := iofs.New(migrations.FS, ".")
+	if err != nil {
+		return fmt.Errorf("create migration source: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("embedded", source, databaseURL)
 	if err != nil {
 		return fmt.Errorf("open migration source: %w", err)
 	}
