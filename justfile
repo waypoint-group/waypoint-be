@@ -1,8 +1,8 @@
 default:
     @just --list
 
-run:
-    go run ./cmd/waypoint
+run *args="":
+    go run ./cmd/waypoint {{args}}
 
 build:
     mkdir -p build
@@ -18,7 +18,7 @@ test-race:
     go test -race ./...
 
 fmt:
-    gofmt -w .
+    go fmt -w .
 
 vet:
     go vet ./...
@@ -31,29 +31,3 @@ check: fmt vet test
 clean:
     rm -rf build/
     go clean
-
-tidy:
-    go mod tidy
-
-deps:
-    go mod download
-
-generate:
-    go generate ./...
-
-sqlc-generate:
-    sqlc generate
-
-sqlc-vet:
-    sqlc vet
-
-cover:
-    go test -coverprofile=coverage.out ./...
-    go tool cover -func=coverage.out
-
-cover-html:
-    go test -coverprofile=coverage.out ./...
-    go tool cover -html=coverage.out
-
-dev:
-    go run ./cmd/waypoint
