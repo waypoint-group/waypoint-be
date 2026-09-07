@@ -18,9 +18,9 @@ ON CONFLICT DO NOTHING
 `
 
 type AddWorkspaceMemberParams struct {
-	WorkspaceID uuid.UUID `json:"workspace_id"`
-	UserID      uuid.UUID `json:"user_id"`
-	Role        string    `json:"role"`
+	WorkspaceID uuid.UUID
+	UserID      uuid.UUID
+	Role        string
 }
 
 func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) error {
@@ -35,8 +35,8 @@ RETURNING id, name, created_at
 `
 
 type CreateWorkspaceParams struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+	ID   uuid.UUID
+	Name string
 }
 
 func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error) {

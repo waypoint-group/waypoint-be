@@ -19,9 +19,9 @@ RETURNING id, email, display_name, created_at
 `
 
 type CreateUserParams struct {
-	ID          uuid.UUID `json:"id"`
-	Email       string    `json:"email"`
-	DisplayName string    `json:"display_name"`
+	ID          uuid.UUID
+	Email       string
+	DisplayName string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
