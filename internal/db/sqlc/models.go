@@ -22,7 +22,7 @@ type ChannelMember struct {
 	JoinedAt  pgtype.Timestamptz
 }
 
-type Message struct {
+type ChannelMessage struct {
 	ID           uuid.UUID
 	AuthorID     uuid.UUID
 	ChannelID    uuid.UUID
@@ -30,6 +30,15 @@ type Message struct {
 	Body         string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+}
+
+type DirectMessage struct {
+	ID          uuid.UUID
+	AuthorID    uuid.UUID
+	RecipientID uuid.UUID
+	Body        string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type User struct {

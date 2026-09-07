@@ -14,22 +14,27 @@ type Querier interface {
 	AddChannelMember(ctx context.Context, arg AddChannelMemberParams) error
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) error
 	CreateChannel(ctx context.Context, arg CreateChannelParams) (Channel, error)
-	CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error)
+	CreateChannelMessage(ctx context.Context, arg CreateChannelMessageParams) (ChannelMessage, error)
+	CreateDirectMessage(ctx context.Context, arg CreateDirectMessageParams) (DirectMessage, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
 	DeleteChannel(ctx context.Context, id uuid.UUID) error
-	DeleteMessage(ctx context.Context, id uuid.UUID) error
+	DeleteChannelMessage(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteDirectMessage(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
-	ListChannelMessages(ctx context.Context, arg ListChannelMessagesParams) ([]Message, error)
-	ListThreadMessages(ctx context.Context, threadRootID *uuid.UUID) ([]Message, error)
+	ListChannelMessages(ctx context.Context, arg ListChannelMessagesParams) ([]ChannelMessage, error)
+	ListChannelThreadMessages(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error)
+	ListDirectMessages(ctx context.Context, arg ListDirectMessagesParams) ([]DirectMessage, error)
 	ListUserWorkspaces(ctx context.Context, userID uuid.UUID) ([]Workspace, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListWorkspaceChannels(ctx context.Context, workspaceID uuid.UUID) ([]Channel, error)
 	SelectChannel(ctx context.Context, id uuid.UUID) (Channel, error)
-	SelectMessage(ctx context.Context, id uuid.UUID) (Message, error)
+	SelectChannelMessage(ctx context.Context, id uuid.UUID) (ChannelMessage, error)
+	SelectDirectMessage(ctx context.Context, id uuid.UUID) (DirectMessage, error)
 	SelectUser(ctx context.Context, id uuid.UUID) (User, error)
 	SelectWorkspace(ctx context.Context, id uuid.UUID) (Workspace, error)
-	UpdateMessageBody(ctx context.Context, arg UpdateMessageBodyParams) (Message, error)
+	UpdateChannelMessageBody(ctx context.Context, arg UpdateChannelMessageBodyParams) (ChannelMessage, error)
+	UpdateDirectMessageBody(ctx context.Context, arg UpdateDirectMessageBodyParams) (DirectMessage, error)
 }
 
 var _ Querier = (*Queries)(nil)
