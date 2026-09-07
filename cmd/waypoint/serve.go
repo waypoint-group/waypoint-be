@@ -9,12 +9,14 @@ import (
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 )
 
+// ServeCommand configures the Waypoint HTTP server command.
 type ServeCommand struct {
 	Port        int    `name:"port" default:"8080" env:"WAYPOINT_HTTP_PORT" required:"" help:"HTTP listen port."`
 	DatabaseURL string `name:"database-url" env:"WAYPOINT_DATABASE_URL" required:"" help:"PostgreSQL connection URL."`
 	Migrate     bool   `name:"migrate" env:"WAYPOINT_MIGRATE" help:"Run database migrations on startup."`
 }
 
+// Run starts the Waypoint HTTP server.
 func (cmd *ServeCommand) Run() (runErr error) {
 	cfg := waypoint.Config{
 		Port:        cmd.Port,

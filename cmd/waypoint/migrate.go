@@ -11,10 +11,12 @@ import (
 	"github.com/waypoint-group/waypoint-be/db/migrations"
 )
 
+// MigrateCommand configures the database migration command.
 type MigrateCommand struct {
 	DatabaseURL string `name:"database-url" env:"WAYPOINT_DATABASE_URL" required:"" help:"PostgreSQL connection URL"`
 }
 
+// Run applies all pending database migrations.
 func (cmd *MigrateCommand) Run() (runErr error) {
 	return Migrate(cmd.DatabaseURL)
 }

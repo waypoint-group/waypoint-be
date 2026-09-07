@@ -12,18 +12,24 @@ type Services struct {
 	Messages *MessageService
 }
 
+// NotFoundError indicates that a requested domain resource does not exist.
 type NotFoundError struct {
+	// What identifies the resource that was not found.
 	What string
 }
 
+// Error returns a human-readable not-found message.
 func (e NotFoundError) Error() string {
 	return e.What + " not found"
 }
 
+// AlreadyExistsError indicates that a domain resource conflicts with an existing resource.
 type AlreadyExistsError struct {
+	// What identifies the resource that already exists.
 	What string
 }
 
+// Error returns a human-readable conflict message.
 func (e AlreadyExistsError) Error() string {
 	return e.What + " already exists"
 }
