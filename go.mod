@@ -2,7 +2,10 @@ module github.com/waypoint-group/waypoint-be
 
 go 1.27.1
 
-require github.com/jackc/pgx/v5 v5.10.0
+require (
+	github.com/alecthomas/kong v1.16.1
+	github.com/jackc/pgx/v5 v5.10.0
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
