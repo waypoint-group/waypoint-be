@@ -26,10 +26,10 @@ type ChannelMessage struct {
 	ID           uuid.UUID
 	AuthorID     uuid.UUID
 	ChannelID    uuid.UUID
-	ThreadRootID *uuid.UUID
-	Body         string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	Body         string
+	ThreadRootID *uuid.UUID
 }
 
 type DirectMessage struct {

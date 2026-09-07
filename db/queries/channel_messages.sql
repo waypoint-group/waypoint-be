@@ -1,5 +1,5 @@
 -- name: CreateChannelMessage :one
-INSERT INTO channel_messages (id, author_id, channel_id, thread_root_id, body)
+INSERT INTO channel_messages (id, author_id, channel_id, body, thread_root_id)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
