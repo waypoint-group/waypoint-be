@@ -130,8 +130,8 @@ func TestChannelMessage_CreateAndSelect(t *testing.T) {
 		context.Background(),
 		msgAuthorID,
 		msgChannelID,
-		nil,
 		msgBody,
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -175,20 +175,20 @@ func TestChannelMessage_GetPage(t *testing.T) {
 	messageService := service.NewChannelMessageService(store)
 	channelID := uuid.NewV7()
 
-	first, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, nil, "first")
+	first, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, "first", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
-	second, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, nil, "second")
+	second, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, "second", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, nil, "third")
+	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, "third", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
 
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), nil, "other channel")
+	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "other channel", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
@@ -211,21 +211,21 @@ func TestChannelMessage_GetThread(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
-	root, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), nil, "root")
+	root, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "root", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
 	threadRootID := root.ID
 
-	firstReply, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), &threadRootID, "first reply")
+	firstReply, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "first reply", &threadRootID)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
-	secondReply, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), &threadRootID, "second reply")
+	secondReply, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "second reply", &threadRootID)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), nil, "not in thread")
+	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "not in thread", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
@@ -262,8 +262,8 @@ func TestChannelMessage_CreateWithMissingThreadRoot(t *testing.T) {
 		context.Background(),
 		uuid.NewV7(),
 		uuid.NewV7(),
-		&nonExistentRootID,
 		"reply",
+		&nonExistentRootID,
 	)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -274,7 +274,7 @@ func TestChannelMessage_Update(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
-	created, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), nil, "before")
+	created, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "before", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestChannelMessage_Delete(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
-	created, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), nil, "to delete")
+	created, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "to delete", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
@@ -336,11 +336,11 @@ func TestChannelMessage_DeleteThread(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
-	root, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), nil, "thread root")
+	root, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "thread root", nil)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), root.ChannelID, &root.ID, "thread reply")
+	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), root.ChannelID, "thread reply", &root.ID)
 	if err != nil {
 		t.Fatalf("CreateChannelMessage returned error: %v", err)
 	}

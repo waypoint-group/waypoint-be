@@ -36,10 +36,10 @@ type ChannelMessage struct {
 	AuthorID uuid.UUID
 	// ChannelID is the unique identifier of the channel this message belongs to.
 	ChannelID uuid.UUID
-	// ThreadRootID is the unique identifier of the root message if this is a reply in a thread.
-	ThreadRootID *uuid.UUID
 	// Body is the text content of the message.
 	Body string
+	// ThreadRootID is the unique identifier of the root message if this is a reply in a thread.
+	ThreadRootID *uuid.UUID
 	// CreatedAt is the time when the message was created.
 	CreatedAt time.Time
 	// UpdatedAt is the time when the message was last updated.
@@ -56,15 +56,15 @@ func NewChannelMessageService(store ChannelMessageStore) *ChannelMessageService 
 func (s *ChannelMessageService) CreateChannelMessage(ctx context.Context,
 	authorID uuid.UUID,
 	channelID uuid.UUID,
-	threadRootID *uuid.UUID,
 	body string,
+	threadRootID *uuid.UUID,
 ) (*ChannelMessage, error) {
 	channelMsg, err := s.store.CreateChannelMessage(ctx, sqlc.CreateChannelMessageParams{
 		ID:           uuid.NewV7(),
 		AuthorID:     authorID,
 		ChannelID:    channelID,
-		ThreadRootID: threadRootID,
 		Body:         body,
+		ThreadRootID: threadRootID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create channel message: %w", err)
@@ -74,8 +74,8 @@ func (s *ChannelMessageService) CreateChannelMessage(ctx context.Context,
 		ID:           channelMsg.ID,
 		AuthorID:     channelMsg.AuthorID,
 		ChannelID:    channelMsg.ChannelID,
-		ThreadRootID: channelMsg.ThreadRootID,
 		Body:         channelMsg.Body,
+		ThreadRootID: channelMsg.ThreadRootID,
 		CreatedAt:    channelMsg.CreatedAt.Time,
 		UpdatedAt:    channelMsg.UpdatedAt.Time,
 	}, nil
@@ -98,8 +98,8 @@ func (s *ChannelMessageService) GetChannelMessage(ctx context.Context, id uuid.U
 		ID:           channelMsg.ID,
 		AuthorID:     channelMsg.AuthorID,
 		ChannelID:    channelMsg.ChannelID,
-		ThreadRootID: channelMsg.ThreadRootID,
 		Body:         channelMsg.Body,
+		ThreadRootID: channelMsg.ThreadRootID,
 		CreatedAt:    channelMsg.CreatedAt.Time,
 		UpdatedAt:    channelMsg.UpdatedAt.Time,
 	}, nil
@@ -123,8 +123,8 @@ func (s *ChannelMessageService) GetChannelMessagePage(ctx context.Context, chann
 			ID:           msg.ID,
 			AuthorID:     msg.AuthorID,
 			ChannelID:    msg.ChannelID,
-			ThreadRootID: msg.ThreadRootID,
 			Body:         msg.Body,
+			ThreadRootID: msg.ThreadRootID,
 			CreatedAt:    msg.CreatedAt.Time,
 			UpdatedAt:    msg.UpdatedAt.Time,
 		})
@@ -150,8 +150,8 @@ func (s *ChannelMessageService) GetChannelThreadMessages(ctx context.Context, th
 			ID:           msg.ID,
 			AuthorID:     msg.AuthorID,
 			ChannelID:    msg.ChannelID,
-			ThreadRootID: msg.ThreadRootID,
 			Body:         msg.Body,
+			ThreadRootID: msg.ThreadRootID,
 			CreatedAt:    msg.CreatedAt.Time,
 			UpdatedAt:    msg.UpdatedAt.Time,
 		})
@@ -177,8 +177,8 @@ func (s *ChannelMessageService) UpdateChannelMessage(ctx context.Context, id uui
 		ID:           channelMsg.ID,
 		AuthorID:     channelMsg.AuthorID,
 		ChannelID:    channelMsg.ChannelID,
-		ThreadRootID: channelMsg.ThreadRootID,
 		Body:         channelMsg.Body,
+		ThreadRootID: channelMsg.ThreadRootID,
 		CreatedAt:    channelMsg.CreatedAt.Time,
 		UpdatedAt:    channelMsg.UpdatedAt.Time,
 	}, nil

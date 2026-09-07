@@ -38,10 +38,10 @@ CREATE TABLE messages (
     id UUID PRIMARY KEY,
     author_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     channel_id UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
-    thread_root_id UUID REFERENCES messages(id) ON DELETE CASCADE,
-    body TEXT NOT NULL CHECK (length(body) > 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    body TEXT NOT NULL CHECK (length(body) > 0),
+    thread_root_id UUID REFERENCES messages(id) ON DELETE CASCADE
 );
 
 -- Useful for quick message retrieval by channel and timestamp.
