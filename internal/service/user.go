@@ -7,15 +7,21 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
 
 	"github.com/jackc/pgx/v5"
 )
 
+// UserStore defines the data access interface for user operations.
+type UserStore interface {
+	CreateUser(context.Context, sqlc.CreateUserParams) (sqlc.User, error)
+	SelectUser(context.Context, uuid.UUID) (sqlc.User, error)
+	ListUsers(context.Context) ([]sqlc.User, error)
+}
+
 // UserService provides business operations for users.
 type UserService struct {
-	database *db.Database
+	store UserStore
 }
 
 // User is a user in the Waypoint domain.
@@ -30,15 +36,15 @@ type User struct {
 	CreatedAt time.Time
 }
 
-func NewUserService(database *db.Database) *UserService {
+func NewUserService(store UserStore) *UserService {
 	return &UserService{
-		database: database,
+		store: store,
 	}
 }
 
 // CreateUser creates a user with the supplied email address and display name.
 func (s *UserService) CreateUser(ctx context.Context, email string, displayName string) (*User, error) {
-	user, err := s.database.CreateUser(ctx, sqlc.CreateUserParams{
+	user, err := s.store.CreateUser(ctx, sqlc.CreateUserParams{
 		ID:          uuid.NewV7(),
 		Email:       email,
 		DisplayName: displayName,
@@ -63,7 +69,7 @@ func (s *UserService) CreateUser(ctx context.Context, email string, displayName 
 
 // GetUser retrieves a user by UUID.
 func (s *UserService) GetUser(ctx context.Context, ID uuid.UUID) (*User, error) {
-	user, err := s.database.SelectUser(ctx, ID)
+	user, err := s.store.SelectUser(ctx, ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, NotFoundError{
@@ -84,7 +90,7 @@ func (s *UserService) GetUser(ctx context.Context, ID uuid.UUID) (*User, error) 
 
 // ListUsers returns all users ordered by display name.
 func (s *UserService) ListUsers(ctx context.Context) ([]User, error) {
-	users, err := s.database.ListUsers(ctx)
+	users, err := s.store.ListUsers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
 	}
