@@ -156,6 +156,33 @@ func TestChannelMessage_CreateAndSelect(t *testing.T) {
 	}
 }
 
+func TestChannelMessage_PageIncludesReplyCount(t *testing.T) {
+	channelID, rootID := uuid.NewV7(), uuid.NewV7()
+	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
+		{ID: rootID, ChannelID: channelID, ReplyCount: 2},
+		{ID: uuid.NewV7(), ChannelID: channelID},
+		{ID: uuid.NewV7(), ChannelID: channelID, ThreadRootID: &rootID},
+		{ID: uuid.NewV7(), ChannelID: channelID, ThreadRootID: &rootID},
+	}}
+	messageService := service.NewChannelMessageService(store)
+	messages, err := messageService.GetChannelMessagePage(context.Background(), channelID, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(messages) != 2 {
+		t.Fatalf("expected root and standalone message only, got %d messages", len(messages))
+	}
+	for _, msg := range messages {
+		var want int64
+		if msg.ID == rootID {
+			want = 2
+		}
+		if msg.ReplyCount != want {
+			t.Errorf("message %s: expected reply count %d, got %d", msg.ID, want, msg.ReplyCount)
+		}
+	}
+}
+
 func TestChannelMessage_SelectMissing(t *testing.T) {
 	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
 
