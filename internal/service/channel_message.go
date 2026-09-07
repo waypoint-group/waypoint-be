@@ -135,10 +135,13 @@ func (s *ChannelMessageService) GetChannelMessagePage(ctx context.Context, chann
 
 // GetChannelThreadMessages lists all messages in a thread for a given
 // thread root ID pair.
-func (s *ChannelMessageService) GetChannelThreadMessages(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error) {
-	threadMsgs, err := s.store.ListChannelThreadMessages(ctx, threadRootID)
+func (s *ChannelMessageService) GetChannelThreadMessages(ctx context.Context, threadRootID uuid.UUID) ([]ChannelMessage, error) {
+	threadMsgs, err := s.store.ListChannelThreadMessages(ctx, &threadRootID)
 	if err != nil {
 		return nil, fmt.Errorf("list channel thread messages: %w", err)
+	}
+	if len(threadMsgs) == 0 {
+		return nil, NotFoundError{What: "channel thread"}
 	}
 
 	result := make([]ChannelMessage, 0, len(threadMsgs))
