@@ -88,7 +88,7 @@ func sameParticipants(authorID, recipientID, otherAuthorID, otherRecipientID uui
 		(authorID == otherRecipientID && recipientID == otherAuthorID)
 }
 
-func TestDirectMessageServiceCreatedAndSelectedDirectMessageMatch(t *testing.T) {
+func TestDirectMessage_CreateAndSelect(t *testing.T) {
 	store := &directMessageStoreStub{}
 	messageService := service.NewDirectMessageService(store)
 	authorID := uuid.NewV7()
@@ -111,7 +111,7 @@ func TestDirectMessageServiceCreatedAndSelectedDirectMessageMatch(t *testing.T) 
 	}
 }
 
-func TestDirectMessageServiceSelectNonExistentDirectMessageReturnsError(t *testing.T) {
+func TestDirectMessage_SelectMissing(t *testing.T) {
 	messageService := service.NewDirectMessageService(&directMessageStoreStub{})
 
 	_, err := messageService.GetDirectMessage(context.Background(), uuid.NewV7())
@@ -125,7 +125,7 @@ func TestDirectMessageServiceSelectNonExistentDirectMessageReturnsError(t *testi
 	}
 }
 
-func TestDirectMessageServiceGetDirectMessagePageReturnsFullPage(t *testing.T) {
+func TestDirectMessage_GetPage(t *testing.T) {
 	store := &directMessageStoreStub{}
 	messageService := service.NewDirectMessageService(store)
 	authorID := uuid.NewV7()
@@ -163,7 +163,7 @@ func TestDirectMessageServiceGetDirectMessagePageReturnsFullPage(t *testing.T) {
 	}
 }
 
-func TestDirectMessageServiceUpdateDirectMessageSuccess(t *testing.T) {
+func TestDirectMessage_Update(t *testing.T) {
 	store := &directMessageStoreStub{}
 	messageService := service.NewDirectMessageService(store)
 
@@ -181,7 +181,7 @@ func TestDirectMessageServiceUpdateDirectMessageSuccess(t *testing.T) {
 	}
 }
 
-func TestDirectMessageServiceUpdateDirectMessageWithNonExistentMessageReturnsError(t *testing.T) {
+func TestDirectMessage_UpdateMissing(t *testing.T) {
 	messageService := service.NewDirectMessageService(&directMessageStoreStub{})
 
 	_, err := messageService.UpdateDirectMessage(context.Background(), uuid.NewV7(), "body")
@@ -190,7 +190,7 @@ func TestDirectMessageServiceUpdateDirectMessageWithNonExistentMessageReturnsErr
 	}
 }
 
-func TestDirectMessageServiceDeleteDirectMessageSuccess(t *testing.T) {
+func TestDirectMessage_Delete(t *testing.T) {
 	store := &directMessageStoreStub{}
 	messageService := service.NewDirectMessageService(store)
 
@@ -207,7 +207,7 @@ func TestDirectMessageServiceDeleteDirectMessageSuccess(t *testing.T) {
 	}
 }
 
-func TestDirectMessageServiceDeleteDirectMessageWithNonExistentMessageReturnsError(t *testing.T) {
+func TestDirectMessage_DeleteMissing(t *testing.T) {
 	messageService := service.NewDirectMessageService(&directMessageStoreStub{})
 
 	err := messageService.DeleteDirectMessage(context.Background(), uuid.NewV7())
