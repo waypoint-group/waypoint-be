@@ -40,6 +40,8 @@ type ChannelMessage struct {
 	Body string
 	// ThreadRootID is the unique identifier of the root message if this is a reply in a thread.
 	ThreadRootID *uuid.UUID
+	// ReplyCount is the number of replies referencing this message as their root.
+	ReplyCount int64
 	// CreatedAt is the time when the message was created.
 	CreatedAt time.Time
 	// UpdatedAt is the time when the message was last updated.
@@ -76,6 +78,7 @@ func (s *ChannelMessageService) CreateChannelMessage(ctx context.Context,
 		ChannelID:    channelMsg.ChannelID,
 		Body:         channelMsg.Body,
 		ThreadRootID: channelMsg.ThreadRootID,
+		ReplyCount:   channelMsg.ReplyCount,
 		CreatedAt:    channelMsg.CreatedAt.Time,
 		UpdatedAt:    channelMsg.UpdatedAt.Time,
 	}, nil
@@ -100,6 +103,7 @@ func (s *ChannelMessageService) GetChannelMessage(ctx context.Context, id uuid.U
 		ChannelID:    channelMsg.ChannelID,
 		Body:         channelMsg.Body,
 		ThreadRootID: channelMsg.ThreadRootID,
+		ReplyCount:   channelMsg.ReplyCount,
 		CreatedAt:    channelMsg.CreatedAt.Time,
 		UpdatedAt:    channelMsg.UpdatedAt.Time,
 	}, nil
@@ -125,6 +129,7 @@ func (s *ChannelMessageService) GetChannelMessagePage(ctx context.Context, chann
 			ChannelID:    msg.ChannelID,
 			Body:         msg.Body,
 			ThreadRootID: msg.ThreadRootID,
+			ReplyCount:   msg.ReplyCount,
 			CreatedAt:    msg.CreatedAt.Time,
 			UpdatedAt:    msg.UpdatedAt.Time,
 		})
@@ -152,6 +157,7 @@ func (s *ChannelMessageService) GetChannelThreadMessages(ctx context.Context, th
 			ChannelID:    msg.ChannelID,
 			Body:         msg.Body,
 			ThreadRootID: msg.ThreadRootID,
+			ReplyCount:   msg.ReplyCount,
 			CreatedAt:    msg.CreatedAt.Time,
 			UpdatedAt:    msg.UpdatedAt.Time,
 		})
@@ -179,6 +185,7 @@ func (s *ChannelMessageService) UpdateChannelMessage(ctx context.Context, id uui
 		ChannelID:    channelMsg.ChannelID,
 		Body:         channelMsg.Body,
 		ThreadRootID: channelMsg.ThreadRootID,
+		ReplyCount:   channelMsg.ReplyCount,
 		CreatedAt:    channelMsg.CreatedAt.Time,
 		UpdatedAt:    channelMsg.UpdatedAt.Time,
 	}, nil

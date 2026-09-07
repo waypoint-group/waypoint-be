@@ -171,27 +171,15 @@ func TestChannelMessage_SelectMissing(t *testing.T) {
 }
 
 func TestChannelMessage_GetPage(t *testing.T) {
-	store := &channelMessageStoreStub{}
+	channelID, firstID, secondID := uuid.NewV7(), uuid.NewV7(), uuid.NewV7()
+	createdAt := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
+		{ID: firstID, ChannelID: channelID, Body: "first", CreatedAt: pgtype.Timestamptz{Time: createdAt, Valid: true}},
+		{ID: secondID, ChannelID: channelID, Body: "second", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(time.Second), Valid: true}},
+		{ID: uuid.NewV7(), ChannelID: channelID, Body: "third", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(2 * time.Second), Valid: true}},
+		{ID: uuid.NewV7(), ChannelID: uuid.NewV7(), Body: "other channel", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(3 * time.Second), Valid: true}},
+	}}
 	messageService := service.NewChannelMessageService(store)
-	channelID := uuid.NewV7()
-
-	first, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, "first", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-	second, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, "second", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), channelID, "third", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "other channel", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
 
 	messages, err := messageService.GetChannelMessagePage(context.Background(), channelID, 2, 1)
 	if err != nil {
@@ -201,34 +189,52 @@ func TestChannelMessage_GetPage(t *testing.T) {
 		t.Fatalf("expected 2 messages, got %d", len(messages))
 	}
 
-	expectedMessages := []service.ChannelMessage{*second, *first}
+	expectedMessages := []service.ChannelMessage{
+		{ID: secondID, ChannelID: channelID, Body: "second", CreatedAt: createdAt.Add(time.Second)},
+		{ID: firstID, ChannelID: channelID, Body: "first", CreatedAt: createdAt},
+	}
 	if !slices.Equal(messages, expectedMessages) {
 		t.Fatalf("expected messages %+v, got %+v", expectedMessages, messages)
 	}
 }
 
-func TestChannelMessage_GetThread(t *testing.T) {
-	store := &channelMessageStoreStub{}
+func TestChannelMessage_PageIncludesReplyCount(t *testing.T) {
+	channelID, rootID := uuid.NewV7(), uuid.NewV7()
+	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
+		{ID: rootID, ChannelID: channelID, ReplyCount: 2},
+		{ID: uuid.NewV7(), ChannelID: channelID},
+		{ID: uuid.NewV7(), ChannelID: channelID, ThreadRootID: &rootID},
+		{ID: uuid.NewV7(), ChannelID: channelID, ThreadRootID: &rootID},
+	}}
 	messageService := service.NewChannelMessageService(store)
+	messages, err := messageService.GetChannelMessagePage(context.Background(), channelID, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(messages) != 2 {
+		t.Fatalf("expected root and standalone message only, got %d messages", len(messages))
+	}
+	for _, msg := range messages {
+		var want int64
+		if msg.ID == rootID {
+			want = 2
+		}
+		if msg.ReplyCount != want {
+			t.Errorf("message %s: expected reply count %d, got %d", msg.ID, want, msg.ReplyCount)
+		}
+	}
+}
 
-	root, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "root", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-	threadRootID := root.ID
-
-	firstReply, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "first reply", &threadRootID)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-	secondReply, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "second reply", &threadRootID)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "not in thread", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
+func TestChannelMessage_GetThread(t *testing.T) {
+	channelID, threadRootID := uuid.NewV7(), uuid.NewV7()
+	firstReplyID, secondReplyID := uuid.NewV7(), uuid.NewV7()
+	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
+		{ID: threadRootID, ChannelID: channelID, Body: "root"},
+		{ID: firstReplyID, ChannelID: channelID, Body: "first reply", ThreadRootID: &threadRootID},
+		{ID: secondReplyID, ChannelID: channelID, Body: "second reply", ThreadRootID: &threadRootID},
+		{ID: uuid.NewV7(), ChannelID: channelID, Body: "not in thread"},
+	}}
+	messageService := service.NewChannelMessageService(store)
 
 	messages, err := messageService.GetChannelThreadMessages(context.Background(), threadRootID)
 	if err != nil {
@@ -238,7 +244,10 @@ func TestChannelMessage_GetThread(t *testing.T) {
 		t.Fatalf("expected 2 thread messages, got %d", len(messages))
 	}
 
-	expectedMessages := []service.ChannelMessage{*firstReply, *secondReply}
+	expectedMessages := []service.ChannelMessage{
+		{ID: firstReplyID, ChannelID: channelID, Body: "first reply", ThreadRootID: &threadRootID},
+		{ID: secondReplyID, ChannelID: channelID, Body: "second reply", ThreadRootID: &threadRootID},
+	}
 	if !slices.Equal(messages, expectedMessages) {
 		t.Fatalf("expected messages %+v, got %+v", expectedMessages, messages)
 	}
@@ -271,25 +280,24 @@ func TestChannelMessage_CreateWithMissingThreadRoot(t *testing.T) {
 }
 
 func TestChannelMessage_Update(t *testing.T) {
-	store := &channelMessageStoreStub{}
+	messageID, authorID, channelID := uuid.NewV7(), uuid.NewV7(), uuid.NewV7()
+	createdAt := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
+		{ID: messageID, AuthorID: authorID, ChannelID: channelID, Body: "before", CreatedAt: pgtype.Timestamptz{Time: createdAt, Valid: true}},
+	}}
 	messageService := service.NewChannelMessageService(store)
 
-	created, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "before", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-
-	updated, err := messageService.UpdateChannelMessage(context.Background(), created.ID, "after")
+	updated, err := messageService.UpdateChannelMessage(context.Background(), messageID, "after")
 	if err != nil {
 		t.Fatalf("UpdateChannelMessage returned error: %v", err)
 	}
 
 	expected := service.ChannelMessage{
-		ID:        created.ID,
+		ID:        messageID,
 		Body:      "after",
-		AuthorID:  created.AuthorID,
-		ChannelID: created.ChannelID,
-		CreatedAt: created.CreatedAt,
+		AuthorID:  authorID,
+		ChannelID: channelID,
+		CreatedAt: createdAt,
 		UpdatedAt: updated.UpdatedAt,
 	}
 	if *updated != expected {
@@ -307,15 +315,13 @@ func TestChannelMessage_UpdateMissing(t *testing.T) {
 }
 
 func TestChannelMessage_Delete(t *testing.T) {
-	store := &channelMessageStoreStub{}
+	messageID := uuid.NewV7()
+	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
+		{ID: messageID, Body: "to delete"},
+	}}
 	messageService := service.NewChannelMessageService(store)
 
-	created, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "to delete", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-
-	if err := messageService.DeleteChannelMessage(context.Background(), created.ID); err != nil {
+	if err := messageService.DeleteChannelMessage(context.Background(), messageID); err != nil {
 		t.Fatalf("DeleteChannelMessage returned error: %v", err)
 	}
 	if len(store.channelMessages) != 0 {
@@ -333,19 +339,14 @@ func TestChannelMessage_DeleteMissing(t *testing.T) {
 }
 
 func TestChannelMessage_DeleteThread(t *testing.T) {
-	store := &channelMessageStoreStub{}
+	channelID, rootID := uuid.NewV7(), uuid.NewV7()
+	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
+		{ID: rootID, ChannelID: channelID, Body: "thread root"},
+		{ID: uuid.NewV7(), ChannelID: channelID, Body: "thread reply", ThreadRootID: &rootID},
+	}}
 	messageService := service.NewChannelMessageService(store)
 
-	root, err := messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), uuid.NewV7(), "thread root", nil)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-	_, err = messageService.CreateChannelMessage(context.Background(), uuid.NewV7(), root.ChannelID, "thread reply", &root.ID)
-	if err != nil {
-		t.Fatalf("CreateChannelMessage returned error: %v", err)
-	}
-
-	if err := messageService.DeleteChannelThread(context.Background(), root.ID); err != nil {
+	if err := messageService.DeleteChannelThread(context.Background(), rootID); err != nil {
 		t.Fatalf("DeleteChannelThread returned error: %v", err)
 	}
 	if len(store.channelMessages) != 0 {

@@ -30,6 +30,7 @@ type ChannelMessage struct {
 	UpdatedAt    pgtype.Timestamptz
 	Body         string
 	ThreadRootID *uuid.UUID
+	ReplyCount   int64
 }
 
 type DirectMessage struct {

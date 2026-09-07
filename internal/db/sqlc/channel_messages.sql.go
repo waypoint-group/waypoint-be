@@ -14,7 +14,7 @@ import (
 const createChannelMessage = `-- name: CreateChannelMessage :one
 INSERT INTO channel_messages (id, author_id, channel_id, body, thread_root_id)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, author_id, channel_id, created_at, updated_at, body, thread_root_id
+RETURNING id, author_id, channel_id, created_at, updated_at, body, thread_root_id, reply_count
 `
 
 type CreateChannelMessageParams struct {
@@ -42,6 +42,7 @@ func (q *Queries) CreateChannelMessage(ctx context.Context, arg CreateChannelMes
 		&i.UpdatedAt,
 		&i.Body,
 		&i.ThreadRootID,
+		&i.ReplyCount,
 	)
 	return i, err
 }
@@ -60,7 +61,7 @@ func (q *Queries) DeleteChannelMessage(ctx context.Context, id uuid.UUID) (int64
 }
 
 const listChannelMessages = `-- name: ListChannelMessages :many
-SELECT id, author_id, channel_id, created_at, updated_at, body, thread_root_id
+SELECT id, author_id, channel_id, created_at, updated_at, body, thread_root_id, reply_count
 FROM channel_messages
 WHERE channel_id = $1
   AND thread_root_id IS NULL
@@ -91,6 +92,7 @@ func (q *Queries) ListChannelMessages(ctx context.Context, arg ListChannelMessag
 			&i.UpdatedAt,
 			&i.Body,
 			&i.ThreadRootID,
+			&i.ReplyCount,
 		); err != nil {
 			return nil, err
 		}
@@ -103,7 +105,7 @@ func (q *Queries) ListChannelMessages(ctx context.Context, arg ListChannelMessag
 }
 
 const listChannelThreadMessages = `-- name: ListChannelThreadMessages :many
-SELECT id, author_id, channel_id, created_at, updated_at, body, thread_root_id
+SELECT id, author_id, channel_id, created_at, updated_at, body, thread_root_id, reply_count
 FROM channel_messages
 WHERE thread_root_id = $1
 ORDER BY created_at
@@ -126,6 +128,7 @@ func (q *Queries) ListChannelThreadMessages(ctx context.Context, threadRootID *u
 			&i.UpdatedAt,
 			&i.Body,
 			&i.ThreadRootID,
+			&i.ReplyCount,
 		); err != nil {
 			return nil, err
 		}
@@ -138,7 +141,7 @@ func (q *Queries) ListChannelThreadMessages(ctx context.Context, threadRootID *u
 }
 
 const selectChannelMessage = `-- name: SelectChannelMessage :one
-SELECT id, author_id, channel_id, created_at, updated_at, body, thread_root_id
+SELECT id, author_id, channel_id, created_at, updated_at, body, thread_root_id, reply_count
 FROM channel_messages
 WHERE id = $1
 `
@@ -154,6 +157,7 @@ func (q *Queries) SelectChannelMessage(ctx context.Context, id uuid.UUID) (Chann
 		&i.UpdatedAt,
 		&i.Body,
 		&i.ThreadRootID,
+		&i.ReplyCount,
 	)
 	return i, err
 }
@@ -163,7 +167,7 @@ UPDATE channel_messages
 SET body = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, author_id, channel_id, created_at, updated_at, body, thread_root_id
+RETURNING id, author_id, channel_id, created_at, updated_at, body, thread_root_id, reply_count
 `
 
 type UpdateChannelMessageBodyParams struct {
@@ -182,6 +186,7 @@ func (q *Queries) UpdateChannelMessageBody(ctx context.Context, arg UpdateChanne
 		&i.UpdatedAt,
 		&i.Body,
 		&i.ThreadRootID,
+		&i.ReplyCount,
 	)
 	return i, err
 }
