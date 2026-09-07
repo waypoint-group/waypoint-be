@@ -18,7 +18,7 @@ test-race:
     go test -race ./...
 
 fmt:
-    go fmt -w .
+    go fmt .
 
 vet:
     go vet ./...
