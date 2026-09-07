@@ -119,7 +119,7 @@ func (s *channelMessageStoreStub) DeleteChannelMessage(ctx context.Context, id u
 	return 0, nil
 }
 
-func TestChannelMessageServiceCreatedAndSelectedChannelMessageMatch(t *testing.T) {
+func TestChannelMessage_CreateAndSelect(t *testing.T) {
 	store := channelMessageStoreStub{}
 	service := service.NewChannelMessageService(&store)
 
@@ -156,7 +156,7 @@ func TestChannelMessageServiceCreatedAndSelectedChannelMessageMatch(t *testing.T
 	}
 }
 
-func TestChannelMessageServiceSelectNonExistentChannelMessageReturnsError(t *testing.T) {
+func TestChannelMessage_SelectMissing(t *testing.T) {
 	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
 
 	_, err := messageService.GetChannelMessage(context.Background(), uuid.NewV7())
@@ -170,7 +170,7 @@ func TestChannelMessageServiceSelectNonExistentChannelMessageReturnsError(t *tes
 	}
 }
 
-func TestChannelMessageServiceGetChannelMessagePageReturnsFullPage(t *testing.T) {
+func TestChannelMessage_GetPage(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 	channelID := uuid.NewV7()
@@ -207,7 +207,7 @@ func TestChannelMessageServiceGetChannelMessagePageReturnsFullPage(t *testing.T)
 	}
 }
 
-func TestChannelMessageServiceGetChannelThreadMessagesReturnsEntireThread(t *testing.T) {
+func TestChannelMessage_GetThread(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
@@ -244,7 +244,7 @@ func TestChannelMessageServiceGetChannelThreadMessagesReturnsEntireThread(t *tes
 	}
 }
 
-func TestChannelMessageServiceGetChannelThreadMessagesWithNonExistentThreadReturnsError(t *testing.T) {
+func TestChannelMessage_GetMissingThread(t *testing.T) {
 	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
 
 	id := uuid.NewV7()
@@ -254,7 +254,7 @@ func TestChannelMessageServiceGetChannelThreadMessagesWithNonExistentThreadRetur
 	}
 }
 
-func TestChannelMessageServiceCreateChannelMessageWithNonExistentThreadRootReturnsError(t *testing.T) {
+func TestChannelMessage_CreateWithMissingThreadRoot(t *testing.T) {
 	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
 	nonExistentRootID := uuid.NewV7()
 
@@ -270,7 +270,7 @@ func TestChannelMessageServiceCreateChannelMessageWithNonExistentThreadRootRetur
 	}
 }
 
-func TestChannelMessageServiceUpdateChannelMessageSuccess(t *testing.T) {
+func TestChannelMessage_Update(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
@@ -297,7 +297,7 @@ func TestChannelMessageServiceUpdateChannelMessageSuccess(t *testing.T) {
 	}
 }
 
-func TestChannelMessageServiceUpdateChannelMessageWithNonExistentMessageReturnsError(t *testing.T) {
+func TestChannelMessage_UpdateMissing(t *testing.T) {
 	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
 
 	_, err := messageService.UpdateChannelMessage(context.Background(), uuid.NewV7(), "body")
@@ -306,7 +306,7 @@ func TestChannelMessageServiceUpdateChannelMessageWithNonExistentMessageReturnsE
 	}
 }
 
-func TestChannelMessageServiceDeleteChannelMessageSuccess(t *testing.T) {
+func TestChannelMessage_Delete(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
@@ -323,7 +323,7 @@ func TestChannelMessageServiceDeleteChannelMessageSuccess(t *testing.T) {
 	}
 }
 
-func TestChannelMessageServiceDeleteChannelMessageWithNonExistentMessageReturnsError(t *testing.T) {
+func TestChannelMessage_DeleteMissing(t *testing.T) {
 	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
 
 	err := messageService.DeleteChannelMessage(context.Background(), uuid.NewV7())
@@ -332,7 +332,7 @@ func TestChannelMessageServiceDeleteChannelMessageWithNonExistentMessageReturnsE
 	}
 }
 
-func TestChannelMessageServiceDeleteChannelThreadSuccess(t *testing.T) {
+func TestChannelMessage_DeleteThread(t *testing.T) {
 	store := &channelMessageStoreStub{}
 	messageService := service.NewChannelMessageService(store)
 
@@ -353,7 +353,7 @@ func TestChannelMessageServiceDeleteChannelThreadSuccess(t *testing.T) {
 	}
 }
 
-func TestChannelMessageServiceDeleteChannelThreadWithNonExistentThreadReturnsError(t *testing.T) {
+func TestChannelMessage_DeleteMissingThread(t *testing.T) {
 	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
 
 	err := messageService.DeleteChannelThread(context.Background(), uuid.NewV7())
