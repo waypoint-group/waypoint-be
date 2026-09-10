@@ -20,9 +20,7 @@ func TestUsers_Create(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to run waypoint: %v", err)
 	}
-	defer func() {
-		_ = uut.Close(t.Context())
-	}()
+	defer uut.Close()
 
 	createTestUser(t, uut, "ada@example.com", "Ada Lovelace")
 }
@@ -32,9 +30,7 @@ func TestUsers_Get(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to run waypoint: %v", err)
 	}
-	defer func() {
-		_ = uut.Close(t.Context())
-	}()
+	defer uut.Close()
 
 	created := createTestUser(t, uut, "ada@example.com", "Ada Lovelace")
 	response, err := uut.Get("/users/" + created.ID)
@@ -64,9 +60,7 @@ func TestUsers_GetMissing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to run waypoint: %v", err)
 	}
-	defer func() {
-		_ = uut.Close(t.Context())
-	}()
+	defer uut.Close()
 
 	response, err := uut.Get("/users/" + uuid.New().String())
 	if err != nil {
@@ -86,9 +80,7 @@ func TestUsers_GetInvalidID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to run waypoint: %v", err)
 	}
-	defer func() {
-		_ = uut.Close(t.Context())
-	}()
+	defer uut.Close()
 
 	response, err := uut.Get("/users/not-a-uuid")
 	if err != nil {
@@ -115,9 +107,7 @@ func TestUsers_List(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to run waypoint: %v", err)
 	}
-	defer func() {
-		_ = uut.Close(t.Context())
-	}()
+	defer uut.Close()
 
 	assertUsers := func(want []httpapi.CreateUserResponse) {
 		t.Helper()

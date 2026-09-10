@@ -5,6 +5,7 @@ package testlib
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
@@ -27,6 +28,11 @@ func NewPostgres() (*Postgres, error) {
 		postgres.BasicWaitStrategies(),
 	)
 	if err != nil {
+		if postgresContainer != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_ = postgresContainer.Terminate(cleanupCtx)
+		}
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
@@ -36,6 +42,9 @@ func NewPostgres() (*Postgres, error) {
 		"sslmode=disable",
 	)
 	if err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = postgresContainer.Terminate(cleanupCtx)
 		return nil, fmt.Errorf("failed to get connection string: %w", err)
 	}
 

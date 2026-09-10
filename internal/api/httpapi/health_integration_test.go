@@ -3,48 +3,48 @@
 package httpapi_test
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/waypoint-group/waypoint-be/internal/testlib"
 )
 
-func TestHealthCheck(t *testing.T) {
+func TestHealth_HealthCheckOk(t *testing.T) {
 	uut, err := testlib.NewWaypoint()
 	if err != nil {
 		t.Fatalf("failed to run waypoint: %v", err)
 	}
-	defer func() {
-		_ = uut.Close(t.Context())
-	}()
+	defer uut.Close()
 
 	response, err := uut.Get("/healthz")
 	if err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", response.StatusCode)
 	}
 }
 
-func TestReadyCheck(t *testing.T) {
+func TestHealth_ReadyCheckOk(t *testing.T) {
 	uut, err := testlib.NewWaypoint()
 	if err != nil {
 		t.Fatalf("failed to run waypoint: %v", err)
 	}
-	defer func() {
-		_ = uut.Close(t.Context())
-	}()
+	defer uut.Close()
 
 	response, err := uut.Get("/readyz")
 	if err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
 	defer func() {
-		_ = uut.Close(t.Context())
+		_ = response.Body.Close()
 	}()
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", response.StatusCode)
 	}
 }

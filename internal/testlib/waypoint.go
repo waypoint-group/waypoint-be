@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 )
@@ -36,6 +37,9 @@ func NewWaypoint() (*Waypoint, error) {
 		},
 	)
 	if err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = postgres.Terminate(ctx)
 		return nil, fmt.Errorf("failed to run Waypoint: %w", err)
 	}
 
@@ -46,10 +50,12 @@ func NewWaypoint() (*Waypoint, error) {
 	}, nil
 }
 
-func (w *Waypoint) Close(ctx context.Context) error {
+func (w *Waypoint) Close() {
 	w.httpServer.Close()
 	w.waypoint.Database.Close()
-	return w.postgres.Stop(ctx, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	_ = w.postgres.Terminate(ctx)
 }
 
 func (w *Waypoint) BaseURL() string {
