@@ -4,6 +4,7 @@
 package testlib
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -45,17 +46,22 @@ func NewWaypoint() (*Waypoint, error) {
 	}, nil
 }
 
-func (w *Waypoint) Close() {
+func (w *Waypoint) Close(ctx context.Context) error {
 	w.httpServer.Close()
 	w.waypoint.Database.Close()
+	return w.postgres.Stop(ctx, nil)
 }
 
-func (w *Waypoint) URL() string {
+func (w *Waypoint) BaseURL() string {
 	return w.httpServer.URL
 }
 
+func (w *Waypoint) RouteURL(route string) string {
+	return fmt.Sprintf("%v%v", w.BaseURL(), route)
+}
+
 func (w *Waypoint) Get(route string) (*http.Response, error) {
-	response, err := http.Get(w.URL())
+	response, err := http.Get(w.RouteURL(route))
 	if err != nil {
 		return nil, fmt.Errorf("failed to make GET request: %w", err)
 	}
@@ -63,7 +69,7 @@ func (w *Waypoint) Get(route string) (*http.Response, error) {
 }
 
 func (w *Waypoint) Post(route string, body io.Reader) (*http.Response, error) {
-	response, err := http.Post(w.URL(), "application/json", body)
+	response, err := http.Post(w.RouteURL(route), "application/json", body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make POST request: %w", err)
 	}
