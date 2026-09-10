@@ -120,13 +120,12 @@ func (s *channelMessageStoreStub) DeleteChannelMessage(ctx context.Context, id u
 }
 
 func TestChannelMessage_CreateAndSelect(t *testing.T) {
-	store := channelMessageStoreStub{}
-	service := service.NewChannelMessageService(&store)
+	uut := service.NewChannelMessageService(&channelMessageStoreStub{})
 
 	msgAuthorID := uuid.NewV7()
 	msgChannelID := uuid.NewV7()
 	msgBody := "Hello world!"
-	createdMsg, err := service.CreateChannelMessage(
+	createdMsg, err := uut.CreateChannelMessage(
 		context.Background(),
 		msgAuthorID,
 		msgChannelID,
@@ -137,7 +136,7 @@ func TestChannelMessage_CreateAndSelect(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	selectedMsg, err := service.GetChannelMessage(context.Background(), createdMsg.ID)
+	selectedMsg, err := uut.GetChannelMessage(context.Background(), createdMsg.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -157,9 +156,9 @@ func TestChannelMessage_CreateAndSelect(t *testing.T) {
 }
 
 func TestChannelMessage_SelectMissing(t *testing.T) {
-	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
+	uut := service.NewChannelMessageService(&channelMessageStoreStub{})
 
-	_, err := messageService.GetChannelMessage(context.Background(), uuid.NewV7())
+	_, err := uut.GetChannelMessage(context.Background(), uuid.NewV7())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -179,9 +178,9 @@ func TestChannelMessage_GetPage(t *testing.T) {
 		{ID: uuid.NewV7(), ChannelID: channelID, Body: "third", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(2 * time.Second), Valid: true}},
 		{ID: uuid.NewV7(), ChannelID: uuid.NewV7(), Body: "other channel", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(3 * time.Second), Valid: true}},
 	}}
-	messageService := service.NewChannelMessageService(store)
+	uut := service.NewChannelMessageService(store)
 
-	messages, err := messageService.GetChannelMessagePage(context.Background(), channelID, 2, 1)
+	messages, err := uut.GetChannelMessagePage(context.Background(), channelID, 2, 1)
 	if err != nil {
 		t.Fatalf("GetChannelMessagePage returned error: %v", err)
 	}
@@ -206,8 +205,9 @@ func TestChannelMessage_PageIncludesReplyCount(t *testing.T) {
 		{ID: uuid.NewV7(), ChannelID: channelID, ThreadRootID: &rootID},
 		{ID: uuid.NewV7(), ChannelID: channelID, ThreadRootID: &rootID},
 	}}
-	messageService := service.NewChannelMessageService(store)
-	messages, err := messageService.GetChannelMessagePage(context.Background(), channelID, 10, 0)
+	uut := service.NewChannelMessageService(store)
+
+	messages, err := uut.GetChannelMessagePage(context.Background(), channelID, 10, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,9 +234,9 @@ func TestChannelMessage_GetThread(t *testing.T) {
 		{ID: secondReplyID, ChannelID: channelID, Body: "second reply", ThreadRootID: &threadRootID},
 		{ID: uuid.NewV7(), ChannelID: channelID, Body: "not in thread"},
 	}}
-	messageService := service.NewChannelMessageService(store)
+	uut := service.NewChannelMessageService(store)
 
-	messages, err := messageService.GetChannelThreadMessages(context.Background(), threadRootID)
+	messages, err := uut.GetChannelThreadMessages(context.Background(), threadRootID)
 	if err != nil {
 		t.Fatalf("GetChannelThreadMessages returned error: %v", err)
 	}
@@ -254,20 +254,20 @@ func TestChannelMessage_GetThread(t *testing.T) {
 }
 
 func TestChannelMessage_GetMissingThread(t *testing.T) {
-	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
+	uut := service.NewChannelMessageService(&channelMessageStoreStub{})
 
 	id := uuid.NewV7()
-	_, err := messageService.GetChannelThreadMessages(context.Background(), id)
+	_, err := uut.GetChannelThreadMessages(context.Background(), id)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
 
 func TestChannelMessage_CreateWithMissingThreadRoot(t *testing.T) {
-	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
+	uut := service.NewChannelMessageService(&channelMessageStoreStub{})
 	nonExistentRootID := uuid.NewV7()
 
-	_, err := messageService.CreateChannelMessage(
+	_, err := uut.CreateChannelMessage(
 		context.Background(),
 		uuid.NewV7(),
 		uuid.NewV7(),
@@ -285,9 +285,9 @@ func TestChannelMessage_Update(t *testing.T) {
 	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
 		{ID: messageID, AuthorID: authorID, ChannelID: channelID, Body: "before", CreatedAt: pgtype.Timestamptz{Time: createdAt, Valid: true}},
 	}}
-	messageService := service.NewChannelMessageService(store)
+	uut := service.NewChannelMessageService(store)
 
-	updated, err := messageService.UpdateChannelMessage(context.Background(), messageID, "after")
+	updated, err := uut.UpdateChannelMessage(context.Background(), messageID, "after")
 	if err != nil {
 		t.Fatalf("UpdateChannelMessage returned error: %v", err)
 	}
@@ -306,9 +306,9 @@ func TestChannelMessage_Update(t *testing.T) {
 }
 
 func TestChannelMessage_UpdateMissing(t *testing.T) {
-	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
+	uut := service.NewChannelMessageService(&channelMessageStoreStub{})
 
-	_, err := messageService.UpdateChannelMessage(context.Background(), uuid.NewV7(), "body")
+	_, err := uut.UpdateChannelMessage(context.Background(), uuid.NewV7(), "body")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -319,9 +319,9 @@ func TestChannelMessage_Delete(t *testing.T) {
 	store := &channelMessageStoreStub{channelMessages: []sqlc.ChannelMessage{
 		{ID: messageID, Body: "to delete"},
 	}}
-	messageService := service.NewChannelMessageService(store)
+	uut := service.NewChannelMessageService(store)
 
-	if err := messageService.DeleteChannelMessage(context.Background(), messageID); err != nil {
+	if err := uut.DeleteChannelMessage(context.Background(), messageID); err != nil {
 		t.Fatalf("DeleteChannelMessage returned error: %v", err)
 	}
 	if len(store.channelMessages) != 0 {
@@ -330,9 +330,9 @@ func TestChannelMessage_Delete(t *testing.T) {
 }
 
 func TestChannelMessage_DeleteMissing(t *testing.T) {
-	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
+	uut := service.NewChannelMessageService(&channelMessageStoreStub{})
 
-	err := messageService.DeleteChannelMessage(context.Background(), uuid.NewV7())
+	err := uut.DeleteChannelMessage(context.Background(), uuid.NewV7())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -344,9 +344,9 @@ func TestChannelMessage_DeleteThread(t *testing.T) {
 		{ID: rootID, ChannelID: channelID, Body: "thread root"},
 		{ID: uuid.NewV7(), ChannelID: channelID, Body: "thread reply", ThreadRootID: &rootID},
 	}}
-	messageService := service.NewChannelMessageService(store)
+	uut := service.NewChannelMessageService(store)
 
-	if err := messageService.DeleteChannelThread(context.Background(), rootID); err != nil {
+	if err := uut.DeleteChannelThread(context.Background(), rootID); err != nil {
 		t.Fatalf("DeleteChannelThread returned error: %v", err)
 	}
 	if len(store.channelMessages) != 0 {
@@ -355,9 +355,9 @@ func TestChannelMessage_DeleteThread(t *testing.T) {
 }
 
 func TestChannelMessage_DeleteMissingThread(t *testing.T) {
-	messageService := service.NewChannelMessageService(&channelMessageStoreStub{})
+	uut := service.NewChannelMessageService(&channelMessageStoreStub{})
 
-	err := messageService.DeleteChannelThread(context.Background(), uuid.NewV7())
+	err := uut.DeleteChannelThread(context.Background(), uuid.NewV7())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

@@ -90,17 +90,16 @@ func sameParticipants(authorID, recipientID, otherAuthorID, otherRecipientID uui
 }
 
 func TestDirectMessage_CreateAndSelect(t *testing.T) {
-	store := &directMessageStoreStub{}
-	messageService := service.NewDirectMessageService(store)
+	uut := service.NewDirectMessageService(&directMessageStoreStub{})
 	authorID := uuid.NewV7()
 	recipientID := uuid.NewV7()
 
-	created, err := messageService.CreateDirectMessage(context.Background(), authorID, recipientID, "Hello world!")
+	created, err := uut.CreateDirectMessage(context.Background(), authorID, recipientID, "Hello world!")
 	if err != nil {
 		t.Fatalf("CreateDirectMessage returned error: %v", err)
 	}
 
-	selected, err := messageService.GetDirectMessage(context.Background(), created.ID)
+	selected, err := uut.GetDirectMessage(context.Background(), created.ID)
 	if err != nil {
 		t.Fatalf("GetDirectMessage returned error: %v", err)
 	}
@@ -113,9 +112,9 @@ func TestDirectMessage_CreateAndSelect(t *testing.T) {
 }
 
 func TestDirectMessage_SelectMissing(t *testing.T) {
-	messageService := service.NewDirectMessageService(&directMessageStoreStub{})
+	uut := service.NewDirectMessageService(&directMessageStoreStub{})
 
-	_, err := messageService.GetDirectMessage(context.Background(), uuid.NewV7())
+	_, err := uut.GetDirectMessage(context.Background(), uuid.NewV7())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -136,9 +135,9 @@ func TestDirectMessage_GetPage(t *testing.T) {
 		{ID: thirdID, AuthorID: authorID, RecipientID: recipientID, Body: "third", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(2 * time.Second), Valid: true}},
 		{ID: uuid.NewV7(), AuthorID: uuid.NewV7(), RecipientID: uuid.NewV7(), Body: "other conversation", CreatedAt: pgtype.Timestamptz{Time: createdAt.Add(3 * time.Second), Valid: true}},
 	}}
-	messageService := service.NewDirectMessageService(store)
+	uut := service.NewDirectMessageService(store)
 
-	messages, err := messageService.GetDirectMessagePage(context.Background(), authorID, recipientID, 2, 1)
+	messages, err := uut.GetDirectMessagePage(context.Background(), authorID, recipientID, 2, 1)
 	if err != nil {
 		t.Fatalf("GetDirectMessagePage returned error: %v", err)
 	}
@@ -160,9 +159,9 @@ func TestDirectMessage_Update(t *testing.T) {
 	store := &directMessageStoreStub{directMessages: []sqlc.DirectMessage{
 		{ID: messageID, AuthorID: authorID, RecipientID: recipientID, Body: "before"},
 	}}
-	messageService := service.NewDirectMessageService(store)
+	uut := service.NewDirectMessageService(store)
 
-	updated, err := messageService.UpdateDirectMessage(context.Background(), messageID, "after")
+	updated, err := uut.UpdateDirectMessage(context.Background(), messageID, "after")
 	if err != nil {
 		t.Fatalf("UpdateDirectMessage returned error: %v", err)
 	}
@@ -172,9 +171,9 @@ func TestDirectMessage_Update(t *testing.T) {
 }
 
 func TestDirectMessage_UpdateMissing(t *testing.T) {
-	messageService := service.NewDirectMessageService(&directMessageStoreStub{})
+	uut := service.NewDirectMessageService(&directMessageStoreStub{})
 
-	_, err := messageService.UpdateDirectMessage(context.Background(), uuid.NewV7(), "body")
+	_, err := uut.UpdateDirectMessage(context.Background(), uuid.NewV7(), "body")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -185,9 +184,9 @@ func TestDirectMessage_Delete(t *testing.T) {
 	store := &directMessageStoreStub{directMessages: []sqlc.DirectMessage{
 		{ID: messageID, Body: "to delete"},
 	}}
-	messageService := service.NewDirectMessageService(store)
+	uut := service.NewDirectMessageService(store)
 
-	if err := messageService.DeleteDirectMessage(context.Background(), messageID); err != nil {
+	if err := uut.DeleteDirectMessage(context.Background(), messageID); err != nil {
 		t.Fatalf("DeleteDirectMessage returned error: %v", err)
 	}
 	if len(store.directMessages) != 0 {
@@ -196,9 +195,9 @@ func TestDirectMessage_Delete(t *testing.T) {
 }
 
 func TestDirectMessage_DeleteMissing(t *testing.T) {
-	messageService := service.NewDirectMessageService(&directMessageStoreStub{})
+	uut := service.NewDirectMessageService(&directMessageStoreStub{})
 
-	err := messageService.DeleteDirectMessage(context.Background(), uuid.NewV7())
+	err := uut.DeleteDirectMessage(context.Background(), uuid.NewV7())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
