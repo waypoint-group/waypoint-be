@@ -38,6 +38,7 @@ temp/
 *.swp
 *.swo
 *~
+codesettings.json
 
 # OS files
 .DS_Store
