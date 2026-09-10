@@ -24,12 +24,6 @@ func (cmd *ServeCommand) Run() (runErr error) {
 		Migrate:     cmd.Migrate,
 	}
 
-	if cfg.Migrate {
-		if err := Migrate(cfg.DatabaseURL); err != nil {
-			return err
-		}
-	}
-
 	app, err := waypoint.New(&cfg)
 	if err != nil {
 		return fmt.Errorf("create Waypoint app: %w", err)

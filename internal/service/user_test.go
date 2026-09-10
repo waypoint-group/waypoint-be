@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
+	"github.com/waypoint-group/waypoint-be/internal/service"
 )
 
 type userStoreStub struct {
@@ -41,15 +42,15 @@ func (s *userStoreStub) ListUsers(context.Context) ([]sqlc.User, error) {
 	return s.users, nil
 }
 
-func TestUserServiceCreatedAndSelectedUserMatch(t *testing.T) {
-	store := &userStoreStub{}
-	service := NewUserService(store)
-	createdUser, err := service.CreateUser(context.Background(), "ada@example.com", "Ada Lovelace")
+func TestUser_CreateAndSelect(t *testing.T) {
+	uut := service.NewUserService(&userStoreStub{})
+
+	createdUser, err := uut.CreateUser(t.Context(), "ada@example.com", "Ada Lovelace")
 	if err != nil {
 		t.Fatalf("CreateUser returned error: %v", err)
 	}
 
-	selectedUser, err := service.GetUser(context.Background(), createdUser.ID)
+	selectedUser, err := uut.GetUser(t.Context(), createdUser.ID)
 	if err != nil {
 		t.Fatalf("GetUser returned error: %v", err)
 	}
@@ -68,31 +69,29 @@ func TestUserServiceCreatedAndSelectedUserMatch(t *testing.T) {
 	}
 }
 
-func TestUserServiceSelectNonExistentUserReturnsError(t *testing.T) {
-	store := &userStoreStub{}
-	service := NewUserService(store)
+func TestUser_SelectMissing(t *testing.T) {
+	uut := service.NewUserService(&userStoreStub{})
 
-	_, err := service.GetUser(context.Background(), uuid.New())
+	_, err := uut.GetUser(t.Context(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
 }
 
-func TestUserServiceListUserReturnsAllCreatedUsers(t *testing.T) {
-	store := &userStoreStub{}
-	service := NewUserService(store)
+func TestUser_List(t *testing.T) {
+	uut := service.NewUserService(&userStoreStub{})
 
-	user1, err := service.CreateUser(context.Background(), "user1@example.com", "User One")
+	user1, err := uut.CreateUser(t.Context(), "user1@example.com", "User One")
 	if err != nil {
 		t.Fatalf("CreateUser returned error: %v", err)
 	}
 
-	user2, err := service.CreateUser(context.Background(), "user2@example.com", "User Two")
+	user2, err := uut.CreateUser(t.Context(), "user2@example.com", "User Two")
 	if err != nil {
 		t.Fatalf("CreateUser returned error: %v", err)
 	}
 
-	users, err := service.ListUsers(context.Background())
+	users, err := uut.ListUsers(t.Context())
 	if err != nil {
 		t.Fatalf("ListUsers returned error: %v", err)
 	}
@@ -101,7 +100,7 @@ func TestUserServiceListUserReturnsAllCreatedUsers(t *testing.T) {
 		t.Fatalf("expected 2 users, got %d", len(users))
 	}
 
-	expectedUsers := []User{*user1, *user2}
+	expectedUsers := []service.User{*user1, *user2}
 	if !slices.Equal(users, expectedUsers) {
 		t.Fatalf("expected %+v, got %+v", expectedUsers, users)
 	}
