@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/waypoint-group/waypoint-be/db/migrations"
 	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
 	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/service"
@@ -27,6 +28,12 @@ type Waypoint struct {
 
 // New constructs a Waypoint application from the supplied configuration.
 func New(cfg *Config) (*Waypoint, error) {
+	if cfg.Migrate {
+		if err := migrations.Up(cfg.DatabaseURL); err != nil {
+			return nil, fmt.Errorf("run migrations: %w", err)
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

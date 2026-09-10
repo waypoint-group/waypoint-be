@@ -1,13 +1,7 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"log"
-
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/waypoint-group/waypoint-be/db/migrations"
 )
 
@@ -22,27 +16,5 @@ func (cmd *MigrateCommand) Run() (runErr error) {
 }
 
 func Migrate(databaseURL string) (migrateErr error) {
-	source, err := iofs.New(migrations.FS, ".")
-	if err != nil {
-		return fmt.Errorf("create migration source: %w", err)
-	}
-
-	m, err := migrate.NewWithSourceInstance("embedded", source, databaseURL)
-	if err != nil {
-		return fmt.Errorf("open migration source: %w", err)
-	}
-	defer func() {
-		closeErr := errors.Join(m.Close())
-		if closeErr != nil {
-			migrateErr = fmt.Errorf("close migration source: %w", closeErr)
-		}
-	}()
-
-	log.Println("running database migrations")
-
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return fmt.Errorf("run migrations: %w", err)
-	}
-
-	return nil
+	return migrations.Up(databaseURL)
 }
