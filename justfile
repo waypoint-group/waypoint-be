@@ -8,14 +8,11 @@ build:
     mkdir -p build
     go build -o build/waypoint ./cmd/waypoint
 
-test:
-    go test ./...
+test-unit *args="":
+    go test {{args}} ./...
 
-test-verbose:
-    go test -v ./...
-
-test-race:
-    go test -race ./...
+test *args="":
+    go test {{args}} --tags integration ./... 
 
 fmt:
     go fmt .
