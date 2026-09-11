@@ -8,9 +8,21 @@ import (
 // Services groups the application's domain services.
 type Services struct {
 	Users           *UserService
+	UserIdentities  *UserIdentityService
 	Channels        *ChannelService
 	ChannelMessages *ChannelMessageService
 	DirectMessages  *DirectMessageService
+}
+
+// New constructs the application's domain services.
+func New(database *db.Database) *Services {
+	return &Services{
+		Users:           NewUserService(database),
+		UserIdentities:  NewUserIdentityService(database),
+		Channels:        NewChannelService(database),
+		ChannelMessages: NewChannelMessageService(database),
+		DirectMessages:  NewDirectMessageService(database),
+	}
 }
 
 // NotFoundError indicates that a requested domain resource does not exist.
@@ -33,14 +45,4 @@ type AlreadyExistsError struct {
 // Error returns a human-readable conflict message.
 func (e AlreadyExistsError) Error() string {
 	return e.What + " already exists"
-}
-
-// New constructs the application's domain services.
-func New(database *db.Database) *Services {
-	return &Services{
-		Users:           NewUserService(database),
-		Channels:        NewChannelService(database),
-		ChannelMessages: NewChannelMessageService(database),
-		DirectMessages:  NewDirectMessageService(database),
-	}
 }

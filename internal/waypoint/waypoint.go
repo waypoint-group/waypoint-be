@@ -43,7 +43,7 @@ func New(cfg *Config) (*Waypoint, error) {
 	}
 
 	services := service.New(database)
-	httpHandler := httpapi.New(database, services)
+	httpHandler := httpapi.New(database, services, httpapi.WithJWTVerification(cfg.JWT))
 
 	return &Waypoint{
 		Database: database,
