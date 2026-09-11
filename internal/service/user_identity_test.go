@@ -69,14 +69,14 @@ func TestUserIdentity_CreateAndSelect(t *testing.T) {
 	store := &userIdentityStoreStub{}
 	uut := service.NewUserIdentityService(store)
 	userID := uuid.New()
-	created, err := uut.CreateUserIdentity(t.Context(), userID, "subject", "issuer")
+	created, err := uut.Create(t.Context(), userID, "subject", "issuer")
 	if err != nil {
 		t.Fatalf("CreateUserIdentity returned error: %v", err)
 	}
 	if created.ID == (uuid.UUID{}) || created.UserID != userID || created.AuthSubject != "subject" || created.AuthIssuer != "issuer" || !created.CreatedAt.Equal(store.identities[0].CreatedAt.Time) {
 		t.Fatalf("unexpected identity: %+v", created)
 	}
-	selected, err := uut.GetUserIdentity(t.Context(), created.ID)
+	selected, err := uut.Get(t.Context(), created.ID)
 	if err != nil {
 		t.Fatalf("GetUserIdentity returned error: %v", err)
 	}
@@ -87,20 +87,20 @@ func TestUserIdentity_CreateAndSelect(t *testing.T) {
 
 func TestUserIdentity_List(t *testing.T) {
 	uut := service.NewUserIdentityService(&userIdentityStoreStub{})
-	empty, err := uut.ListUserIdentities(t.Context())
+	empty, err := uut.List(t.Context())
 	if err != nil || empty == nil || len(empty) != 0 {
 		t.Fatalf("expected non-nil empty list, got %+v, %v", empty, err)
 	}
 	userID := uuid.New()
 	var want []service.UserIdentity
 	for _, subject := range []string{"first", "second"} {
-		identity, err := uut.CreateUserIdentity(t.Context(), userID, subject, "issuer")
+		identity, err := uut.Create(t.Context(), userID, subject, "issuer")
 		if err != nil {
 			t.Fatalf("CreateUserIdentity returned error: %v", err)
 		}
 		want = append(want, *identity)
 	}
-	got, err := uut.ListUserIdentities(t.Context())
+	got, err := uut.List(t.Context())
 	if err != nil {
 		t.Fatalf("ListUserIdentities returned error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestUserIdentity_GetUserByIdentity(t *testing.T) {
 func TestUserIdentity_Missing(t *testing.T) {
 	uut := service.NewUserIdentityService(&userIdentityStoreStub{})
 	t.Run("identity", func(t *testing.T) {
-		got, err := uut.GetUserIdentity(t.Context(), uuid.New())
+		got, err := uut.Get(t.Context(), uuid.New())
 		var notFound service.NotFoundError
 		if got != nil || !errors.As(err, &notFound) || notFound.What != "user identity" {
 			t.Fatalf("expected identity not found, got %+v, %v", got, err)
@@ -168,11 +168,11 @@ func TestUserIdentity_StoreErrors(t *testing.T) {
 		run          func() error
 	}{
 		{"create", "create user identity", func() error {
-			_, err := uut.CreateUserIdentity(t.Context(), uuid.New(), "subject", "issuer")
+			_, err := uut.Create(t.Context(), uuid.New(), "subject", "issuer")
 			return err
 		}},
-		{"get", "get user identity", func() error { _, err := uut.GetUserIdentity(t.Context(), uuid.New()); return err }},
-		{"list", "list user identities", func() error { _, err := uut.ListUserIdentities(t.Context()); return err }},
+		{"get", "get user identity", func() error { _, err := uut.Get(t.Context(), uuid.New()); return err }},
+		{"list", "list user identities", func() error { _, err := uut.List(t.Context()); return err }},
 		{"get user", "get user by identity", func() error { _, err := uut.GetUserByIdentity(t.Context(), "subject", "issuer"); return err }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

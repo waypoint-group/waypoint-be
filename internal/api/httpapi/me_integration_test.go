@@ -56,19 +56,19 @@ func TestMe(t *testing.T) {
 
 	server := httptest.NewServer(app.Handler)
 	t.Cleanup(server.Close)
-	user, err := app.Services.Users.CreateUser(t.Context(), "ada@example.com", "Ada Lovelace")
+	user, err := app.Services.Users.Create(t.Context(), "ada@example.com", "Ada Lovelace")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
 
 	for _, subject := range []string{"ada", "linked-ada"} {
-		if _, err := app.Services.UserIdentities.CreateUserIdentity(t.Context(), user.ID, subject, issuer); err != nil {
+		if _, err := app.Services.UserIdentities.Create(t.Context(), user.ID, subject, issuer); err != nil {
 			t.Fatalf("create identity: %v", err)
 		}
 	}
 
 	// A matching subject from a different issuer must not resolve to this user.
-	if _, err := app.Services.UserIdentities.CreateUserIdentity(t.Context(), user.ID, "other-realm-only", "https://other.example.com"); err != nil {
+	if _, err := app.Services.UserIdentities.Create(t.Context(), user.ID, "other-realm-only", "https://other.example.com"); err != nil {
 		t.Fatalf("create other issuer identity: %v", err)
 	}
 

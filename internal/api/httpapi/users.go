@@ -64,7 +64,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.services.Users.CreateUser(r.Context(), email, displayName)
+	user, err := h.services.Users.Create(r.Context(), email, displayName)
 	if err != nil {
 		var alreadyExists service.AlreadyExistsError
 		if errors.As(err, &alreadyExists) {
@@ -95,7 +95,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.services.Users.GetUser(r.Context(), ID)
+	user, err := h.services.Users.Get(r.Context(), ID)
 	if err != nil {
 		var notFound service.NotFoundError
 		if errors.As(err, &notFound) {
@@ -120,7 +120,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 // ListUsers writes all users returned by the user service.
 func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.services.Users.ListUsers(r.Context())
+	users, err := h.services.Users.List(r.Context())
 	if err != nil {
 		writeInternalServerError(w, err)
 		return

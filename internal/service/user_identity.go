@@ -46,8 +46,8 @@ func NewUserIdentityService(store UserIdentityStore) *UserIdentityService {
 	}
 }
 
-// CreateUserIdentity links an authentication identity to a local user.
-func (s *UserIdentityService) CreateUserIdentity(ctx context.Context, userId uuid.UUID, authSubject string, authIssuer string) (*UserIdentity, error) {
+// Create links an authentication identity to a local user.
+func (s *UserIdentityService) Create(ctx context.Context, userId uuid.UUID, authSubject string, authIssuer string) (*UserIdentity, error) {
 	user, err := s.store.CreateUserIdentity(ctx, sqlc.CreateUserIdentityParams{
 		ID:          uuid.NewV7(),
 		UserID:      userId,
@@ -70,8 +70,8 @@ func (s *UserIdentityService) CreateUserIdentity(ctx context.Context, userId uui
 	}, nil
 }
 
-// GetUserIdentity retrieves an identity mapping by UUID.
-func (s *UserIdentityService) GetUserIdentity(ctx context.Context, id uuid.UUID) (*UserIdentity, error) {
+// Get retrieves an identity mapping by UUID.
+func (s *UserIdentityService) Get(ctx context.Context, id uuid.UUID) (*UserIdentity, error) {
 	userIdentity, err := s.store.SelectUserIdentity(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -92,8 +92,8 @@ func (s *UserIdentityService) GetUserIdentity(ctx context.Context, id uuid.UUID)
 	}, nil
 }
 
-// ListUserIdentities returns all identity mappings.
-func (s *UserIdentityService) ListUserIdentities(ctx context.Context) ([]UserIdentity, error) {
+// List returns all identity mappings.
+func (s *UserIdentityService) List(ctx context.Context) ([]UserIdentity, error) {
 	userIdentities, err := s.store.ListUserIdentities(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list user identities: %w", err)
