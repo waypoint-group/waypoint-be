@@ -45,14 +45,14 @@ func (s *userStoreStub) ListUsers(context.Context) ([]sqlc.User, error) {
 func TestUser_CreateAndSelect(t *testing.T) {
 	uut := service.NewUserService(&userStoreStub{})
 
-	createdUser, err := uut.CreateUser(t.Context(), "ada@example.com", "Ada Lovelace")
+	createdUser, err := uut.Create(t.Context(), "ada@example.com", "Ada Lovelace")
 	if err != nil {
-		t.Fatalf("CreateUser returned error: %v", err)
+		t.Fatalf("Create returned error: %v", err)
 	}
 
-	selectedUser, err := uut.GetUser(t.Context(), createdUser.ID)
+	selectedUser, err := uut.Get(t.Context(), createdUser.ID)
 	if err != nil {
-		t.Fatalf("GetUser returned error: %v", err)
+		t.Fatalf("Get returned error: %v", err)
 	}
 
 	usersMatch := createdUser.ID == selectedUser.ID &&
@@ -72,7 +72,7 @@ func TestUser_CreateAndSelect(t *testing.T) {
 func TestUser_SelectMissing(t *testing.T) {
 	uut := service.NewUserService(&userStoreStub{})
 
-	_, err := uut.GetUser(t.Context(), uuid.New())
+	_, err := uut.Get(t.Context(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -81,19 +81,19 @@ func TestUser_SelectMissing(t *testing.T) {
 func TestUser_List(t *testing.T) {
 	uut := service.NewUserService(&userStoreStub{})
 
-	user1, err := uut.CreateUser(t.Context(), "user1@example.com", "User One")
+	user1, err := uut.Create(t.Context(), "user1@example.com", "User One")
 	if err != nil {
-		t.Fatalf("CreateUser returned error: %v", err)
+		t.Fatalf("Create returned error: %v", err)
 	}
 
-	user2, err := uut.CreateUser(t.Context(), "user2@example.com", "User Two")
+	user2, err := uut.Create(t.Context(), "user2@example.com", "User Two")
 	if err != nil {
-		t.Fatalf("CreateUser returned error: %v", err)
+		t.Fatalf("Create returned error: %v", err)
 	}
 
-	users, err := uut.ListUsers(t.Context())
+	users, err := uut.List(t.Context())
 	if err != nil {
-		t.Fatalf("ListUsers returned error: %v", err)
+		t.Fatalf("List returned error: %v", err)
 	}
 
 	if len(users) != 2 {
