@@ -1,0 +1,89 @@
+{
+  "realm": "waypoint",
+  "enabled": true,
+  "sslRequired": "none",
+  "clients": [
+    {
+      "clientId": "waypoint-tests",
+      "protocol": "openid-connect",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "waypoint-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "waypoint-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "ada",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "ada@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "linked-ada",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "linked-ada@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "missing",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "missing@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "other-realm-only",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "other-realm-only@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test-password",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
