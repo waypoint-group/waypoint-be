@@ -1,6 +1,8 @@
 package waypoint
 
-import "github.com/waypoint-group/waypoint-be/internal/api/httpapi"
+import (
+	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
+)
 
 // Config contains the configuration used to construct a Waypoint application.
 type Config struct {
@@ -11,5 +13,5 @@ type Config struct {
 	// Migrate controls whether database migrations are run before startup.
 	Migrate bool
 	// JWT configures access token verification; an empty configuration rejects authenticated requests.
-	JWT httpapi.JWTConfig
+	JWT middleware.JWTConfig
 }

@@ -7,6 +7,8 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/golang-jwt/jwt/v5/request"
+	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/service"
 )
 
@@ -50,6 +52,25 @@ type ListUsersResponse struct {
 
 // CreateUser validates and creates a user from the request body.
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	// Forbid duplicate authorization headers.
+	headers := r.Header.Values("Authorization")
+	if len(headers) != 1 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	rawJWT, err := (request.BearerExtractor{}).ExtractToken(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	_, claims, err := middleware.ValidateJWT(rawJWT, h.jwtConfig)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var request CreateUserRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeInvalidRequestBody(w, err)
@@ -64,6 +85,8 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// FIXME: User creation and identity creation must happen in
+	// a transaction to ensure atomicity.
 	user, err := h.services.Users.Create(r.Context(), email, displayName)
 	if err != nil {
 		var alreadyExists service.AlreadyExistsError
@@ -72,6 +95,16 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		writeInternalServerError(w, err)
+		return
+	}
+	_, err = h.services.UserIdentities.Create(
+		r.Context(),
+		user.ID,
+		claims.Subject,
+		claims.Issuer,
+	)
+	if err != nil {
 		writeInternalServerError(w, err)
 		return
 	}

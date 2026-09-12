@@ -14,6 +14,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
+	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/testlib"
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 )
@@ -43,7 +44,7 @@ func TestMe(t *testing.T) {
 	})
 	app, err := waypoint.New(&waypoint.Config{
 		DatabaseURL: postgres.URL, Migrate: true,
-		JWT: httpapi.JWTConfig{
+		JWT: middleware.JWTConfig{
 			Issuer:   issuer,
 			Audience: audience,
 			KeyFunc:  func(*jwt.Token) (any, error) { return &key.PublicKey, nil },
