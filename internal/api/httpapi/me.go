@@ -5,30 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/golang-jwt/jwt/v5/request"
+	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/service"
 )
-
-// JWTConfig contains the trusted issuer, audience, and key resolver for access tokens.
-// KeyFunc must return trusted RSA public keys; it must not trust keys supplied by the token.
-type JWTConfig struct {
-	// Issuer is the exact issuer URL accepted by the API.
-	Issuer string
-	// Audience is the audience required in access tokens for this API.
-	Audience string
-	// KeyFunc resolves the RSA public key used to verify a token's signature.
-	KeyFunc jwt.Keyfunc
-}
-
-// Option configures an HTTP API handler.
-type Option func(*Handler)
-
-// WithJWTVerification configures RS256 access token verification for authenticated routes.
-// Missing issuer, audience, or key resolver causes authentication to fail closed.
-func WithJWTVerification(config JWTConfig) Option {
-	return func(h *Handler) { h.jwtConfig = config }
-}
 
 // MeResponse contains the authenticated user's profile.
 type MeResponse struct {
@@ -57,32 +37,17 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.jwtConfig.KeyFunc == nil || h.jwtConfig.Issuer == "" || h.jwtConfig.Audience == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var claims jwt.RegisteredClaims
-	_, err = jwt.ParseWithClaims(
-		rawJWT,
-		&claims,
-		h.jwtConfig.KeyFunc,
-		jwt.WithValidMethods([]string{"RS256"}),
-		jwt.WithExpirationRequired(),
-		jwt.WithIssuer(h.jwtConfig.Issuer),
-		jwt.WithAudience(h.jwtConfig.Audience),
-	)
+	_, claims, err := middleware.ValidateJWT(rawJWT, h.jwtConfig)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if claims.Subject == "" || claims.Issuer == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	user, err := h.services.UserIdentities.GetUserByIdentity(r.Context(), claims.Subject, claims.Issuer)
+	user, err := h.services.UserIdentities.GetUserByIdentity(
+		r.Context(),
+		claims.Subject,
+		claims.Issuer,
+	)
 	if err != nil {
 		var notFound service.NotFoundError
 		if errors.As(err, &notFound) {

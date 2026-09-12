@@ -9,17 +9,21 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/service"
 )
 
 const maxRequestBodyBytes = 1 << 20
 
+// Option configures an HTTP API handler.
+type Option func(*Handler)
+
 // Handler serves the Waypoint HTTP API.
 type Handler struct {
 	services  *service.Services
 	database  *db.Database
-	jwtConfig JWTConfig
+	jwtConfig middleware.JWTConfig
 }
 
 // New constructs an HTTP API handler backed by the supplied database and services.
@@ -32,6 +36,12 @@ func New(database *db.Database, services *service.Services, options ...Option) *
 		option(handler)
 	}
 	return handler
+}
+
+// WithJWTVerification configures RS256 access token verification for authenticated routes.
+// Missing issuer, audience, or key resolver causes authentication to fail closed.
+func WithJWTVerification(config middleware.JWTConfig) Option {
+	return func(h *Handler) { h.jwtConfig = config }
 }
 
 // Routes returns the HTTP handler containing all Waypoint API routes.
