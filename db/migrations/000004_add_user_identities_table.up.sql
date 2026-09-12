@@ -4,7 +4,7 @@ CREATE TABLE user_identities (
     auth_subject TEXT NOT NULL,
     auth_issuer TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (auth_issuer, auth_subject)
+    CONSTRAINT user_identities_identity_unique UNIQUE (auth_issuer, auth_subject)
 );
 
 CREATE INDEX user_identities_user_id_idx

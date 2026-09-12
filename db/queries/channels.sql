@@ -1,7 +1,6 @@
 -- name: CreateChannel :one
 INSERT INTO channels (id, workspace_id, name)
 VALUES ($1, $2, $3)
-ON CONFLICT (workspace_id, name) DO NOTHING
 RETURNING *;
 
 -- name: SelectChannel :one

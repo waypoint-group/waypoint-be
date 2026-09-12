@@ -22,7 +22,30 @@ func TestUsers_Create(t *testing.T) {
 	}
 	defer uut.Close()
 
-	createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	t.Run("duplicate email", func(t *testing.T) {
+		token, err := uut.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
+		if err != nil {
+			t.Fatalf("log into Keycloak: %v", err)
+		}
+		response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users",
+			strings.NewReader(`{"email":"ada@example.com","display_name":"Another User"}`), token)
+		if err != nil {
+			t.Fatalf("register duplicate email: %v", err)
+		}
+		defer func() { _ = response.Body.Close() }()
+		if response.StatusCode != http.StatusConflict {
+			t.Fatalf("expected status 409, got %d", response.StatusCode)
+		}
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			t.Fatalf("read conflict response: %v", err)
+		}
+		if got := strings.TrimSpace(string(body)); got != "email already exists" {
+			t.Errorf("expected email conflict, got %q", got)
+		}
+		assertUsers(t, uut, []httpapi.CreateUserResponse{created})
+	})
 }
 
 func TestUsers_CreateDuplicateIdentity(t *testing.T) {
@@ -45,6 +68,13 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusConflict {
 		t.Fatalf("expected status 409, got %d", response.StatusCode)
+	}
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read conflict response: %v", err)
+	}
+	if got := strings.TrimSpace(string(body)); got != "user identity already exists" {
+		t.Errorf("expected identity conflict, got %q", got)
 	}
 	// The failed registration must roll back the second profile.
 	assertUsers(t, uut, []httpapi.CreateUserResponse{created})

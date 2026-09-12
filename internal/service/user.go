@@ -7,6 +7,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
 
 	"github.com/jackc/pgx/v5"
@@ -50,7 +51,7 @@ func (s *UserService) Create(ctx context.Context, email string, displayName stri
 		DisplayName: displayName,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if db.IsUniqueViolation(err, "users_email_unique") {
 			return nil, AlreadyExistsError{
 				What: "email",
 			}
