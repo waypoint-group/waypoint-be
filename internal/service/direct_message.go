@@ -49,8 +49,8 @@ func NewDirectMessageService(store DirectMessageStore) *DirectMessageService {
 	}
 }
 
-// CreateDirectMessage creates a new direct message and returns it.
-func (s *DirectMessageService) CreateDirectMessage(ctx context.Context,
+// Create creates a new direct message and returns it.
+func (s *DirectMessageService) Create(ctx context.Context,
 	authorID uuid.UUID,
 	recipientID uuid.UUID,
 	body string,
@@ -75,8 +75,8 @@ func (s *DirectMessageService) CreateDirectMessage(ctx context.Context,
 	}, nil
 }
 
-// GetDirectMessage retrieves a direct message by its ID.
-func (s *DirectMessageService) GetDirectMessage(ctx context.Context, id uuid.UUID) (*DirectMessage, error) {
+// Get retrieves a direct message by its ID.
+func (s *DirectMessageService) Get(ctx context.Context, id uuid.UUID) (*DirectMessage, error) {
 	directMsg, err := s.store.SelectDirectMessage(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -98,9 +98,9 @@ func (s *DirectMessageService) GetDirectMessage(ctx context.Context, id uuid.UUI
 	}, nil
 }
 
-// GetDirectMessagePage returns a page of direct messages for a given
-// (author ID, recipient ID) pair.
-func (s *DirectMessageService) GetDirectMessagePage(ctx context.Context,
+// GetPage returns a page of direct messages for a given (author ID,
+// recipient ID) pair.
+func (s *DirectMessageService) GetPage(ctx context.Context,
 	authorID uuid.UUID,
 	recipientID uuid.UUID,
 	limit int32, offset int32,
@@ -130,8 +130,8 @@ func (s *DirectMessageService) GetDirectMessagePage(ctx context.Context,
 	return result, nil
 }
 
-// UpdateDirectMessage updates the body of an existing direct message.
-func (s *DirectMessageService) UpdateDirectMessage(ctx context.Context,
+// Update updates the body of an existing direct message.
+func (s *DirectMessageService) Update(ctx context.Context,
 	id uuid.UUID,
 	body string,
 ) (*DirectMessage, error) {
@@ -156,8 +156,8 @@ func (s *DirectMessageService) UpdateDirectMessage(ctx context.Context,
 	}, nil
 }
 
-// DeleteDirectMessage deletes a direct message by its ID.
-func (s *DirectMessageService) DeleteDirectMessage(ctx context.Context, id uuid.UUID) error {
+// Delete deletes a direct message by its ID.
+func (s *DirectMessageService) Delete(ctx context.Context, id uuid.UUID) error {
 	rows, err := s.store.DeleteDirectMessage(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete direct message: %w", err)

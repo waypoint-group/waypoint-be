@@ -1,9 +1,9 @@
 services:
   # PostgreSQL 18
   # URL: postgres://postgres:<POSTGRES_PASSWORD>@localhost:5433/waypoint
-  db:
+  postgres:
     image: postgres:18
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-waypoint}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -17,7 +17,40 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 30s
+
+  # Local Keycloak. Register your own account at /realms/waypoint/account/.
+  # Waypoint issuer: http://localhost:8081/realms/waypoint; audience: waypoint-api.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      # This administrator belongs to the master realm, not the waypoint realm.
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-secret}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    configs:
+      - source: keycloak-realm
+        target: /opt/keycloak/data/import/waypoint-realm.json
+        mode: 0o644
+    healthcheck:
+      test:
+        - CMD
+        - /bin/bash
+        - -ec
+        - |
+          exec 3<>/dev/tcp/127.0.0.1/8080
+          printf 'GET /realms/waypoint/.well-known/openid-configuration HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3
+          IFS= read -r status <&3
+          [[ "$$status" == *" 200 "* ]]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # PgAdmin 4 web UI
   # URL: http://localhost:5050
@@ -34,7 +67,7 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     configs:
       - source: pgadmin-pgpass
@@ -49,8 +82,41 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  keycloak_data:
 
 configs:
+  # Imported only when the realm does not exist. Later changes can be made in
+  # the Keycloak admin console; restarting preserves existing users and settings.
+  keycloak-realm:
+    content: |
+      {
+        "realm": "waypoint",
+        "enabled": true,
+        "sslRequired": "none",
+        "registrationAllowed": true,
+        "clients": [
+          {
+            "clientId": "waypoint-manual",
+            "protocol": "openid-connect",
+            "enabled": true,
+            "publicClient": true,
+            "standardFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "protocolMappers": [
+              {
+                "name": "waypoint-api-audience",
+                "protocol": "openid-connect",
+                "protocolMapper": "oidc-audience-mapper",
+                "config": {
+                  "included.custom.audience": "waypoint-api",
+                  "access.token.claim": "true",
+                  "id.token.claim": "false"
+                }
+              }
+            ]
+          }
+        ]
+      }
   pgadmin-servers:
     content: |
       {
@@ -58,7 +124,7 @@ configs:
           "1": {
             "Name": "Waypoint PostgreSQL",
             "Group": "Servers",
-            "Host": "db",
+            "Host": "postgres",
             "Port": 5432,
             "MaintenanceDB": "${POSTGRES_DB:-waypoint}",
             "Username": "${POSTGRES_USER:-postgres}",
@@ -70,4 +136,4 @@ configs:
       }
   pgadmin-pgpass:
     content: |
-      db:5432:*:${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-secret}
+      postgres:5432:*:${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-secret}

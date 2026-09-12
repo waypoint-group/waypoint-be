@@ -14,7 +14,6 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, display_name)
 VALUES ($1, $2, $3)
-ON CONFLICT (email) DO NOTHING
 RETURNING id, email, display_name, created_at
 `
 
@@ -75,6 +74,30 @@ WHERE id = $1
 
 func (q *Queries) SelectUser(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRow(ctx, selectUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.DisplayName,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const selectUserByIdentity = `-- name: SelectUserByIdentity :one
+SELECT u.id, u.email, u.display_name, u.created_at
+FROM users AS u
+JOIN user_identities AS i ON u.id = i.user_id
+WHERE i.auth_subject = $1 AND i.auth_issuer = $2
+`
+
+type SelectUserByIdentityParams struct {
+	AuthSubject string
+	AuthIssuer  string
+}
+
+func (q *Queries) SelectUserByIdentity(ctx context.Context, arg SelectUserByIdentityParams) (User, error) {
+	row := q.db.QueryRow(ctx, selectUserByIdentity, arg.AuthSubject, arg.AuthIssuer)
 	var i User
 	err := row.Scan(
 		&i.ID,

@@ -43,11 +43,15 @@ func New(cfg *Config) (*Waypoint, error) {
 	}
 
 	services := service.New(database)
-	httpHandler := httpapi.New(database, services)
+	httpHandler := httpapi.New(database, services, httpapi.WithJWTVerification(cfg.JWT))
 
 	return &Waypoint{
 		Database: database,
 		Services: services,
 		Handler:  httpHandler.Routes(),
 	}, nil
+}
+
+func (w *Waypoint) Close() {
+	w.Database.Close()
 }

@@ -49,6 +49,14 @@ type User struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type UserIdentity struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	AuthSubject string
+	AuthIssuer  string
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Workspace struct {
 	ID        uuid.UUID
 	Name      string

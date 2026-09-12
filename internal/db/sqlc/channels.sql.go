@@ -30,7 +30,6 @@ func (q *Queries) AddChannelMember(ctx context.Context, arg AddChannelMemberPara
 const createChannel = `-- name: CreateChannel :one
 INSERT INTO channels (id, workspace_id, name)
 VALUES ($1, $2, $3)
-ON CONFLICT (workspace_id, name) DO NOTHING
 RETURNING id, workspace_id, name, created_at
 `
 
