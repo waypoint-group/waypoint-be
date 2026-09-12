@@ -16,7 +16,7 @@ func TestHealth_HealthCheckOk(t *testing.T) {
 	}
 	defer uut.Close()
 
-	response, err := uut.Get("/healthz")
+	response, err := uut.Request(t.Context(), http.MethodGet, "/healthz", nil)
 	if err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestHealth_ReadyCheckOk(t *testing.T) {
 	}
 	defer uut.Close()
 
-	response, err := uut.Get("/readyz")
+	response, err := uut.Request(t.Context(), http.MethodGet, "/readyz", nil)
 	if err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}

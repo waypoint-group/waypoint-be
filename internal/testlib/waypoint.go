@@ -9,75 +9,97 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"time"
 
+	"github.com/waypoint-group/waypoint-be/internal/service"
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 )
 
 var waypointPort = 8080
 
 type Waypoint struct {
-	postgres   *Postgres
-	waypoint   *waypoint.Waypoint
-	httpServer *httptest.Server
+	postgres  *Postgres
+	keycloak  *Keycloak
+	waypoint  *waypoint.Waypoint
+	apiServer *httptest.Server
 }
 
 func NewWaypoint() (*Waypoint, error) {
-	postgres, err := NewPostgres()
+	w := &Waypoint{}
+
+	var err error
+	w.postgres, err = NewPostgres()
 	if err != nil {
+		w.Close()
 		return nil, fmt.Errorf("failed to run Postgres: %w", err)
 	}
+	w.keycloak, err = NewKeycloak()
+	if err != nil {
+		w.Close()
+		return nil, fmt.Errorf("failed to run Keycloak: %w", err)
+	}
 
-	waypoint, err := waypoint.New(
+	w.waypoint, err = waypoint.New(
 		&waypoint.Config{
 			Port:        waypointPort,
-			DatabaseURL: postgres.URL,
+			DatabaseURL: w.postgres.URL,
 			// Always run migrations for tests.
 			Migrate: true,
+			JWT:     w.keycloak.JWTConfig,
 		},
 	)
 	if err != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		_ = postgres.Terminate(ctx)
+		w.Close()
 		return nil, fmt.Errorf("failed to run Waypoint: %w", err)
 	}
 
-	return &Waypoint{
-		postgres:   postgres,
-		waypoint:   waypoint,
-		httpServer: httptest.NewServer(waypoint.Handler),
-	}, nil
+	w.apiServer = httptest.NewServer(w.waypoint.Handler)
+	return w, nil
 }
 
 func (w *Waypoint) Close() {
-	w.httpServer.Close()
-	w.waypoint.Database.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	_ = w.postgres.Terminate(ctx)
-}
-
-func (w *Waypoint) BaseURL() string {
-	return w.httpServer.URL
-}
-
-func (w *Waypoint) RouteURL(route string) string {
-	return fmt.Sprintf("%v%v", w.BaseURL(), route)
-}
-
-func (w *Waypoint) Get(route string) (*http.Response, error) {
-	response, err := http.Get(w.RouteURL(route))
-	if err != nil {
-		return nil, fmt.Errorf("failed to make GET request: %w", err)
+	if w.apiServer != nil {
+		w.apiServer.Close()
 	}
-	return response, nil
+	if w.waypoint != nil {
+		w.waypoint.Close()
+	}
+	if w.keycloak != nil {
+		w.keycloak.Close()
+	}
+	if w.postgres != nil {
+		w.postgres.Close()
+	}
 }
 
-func (w *Waypoint) Post(route string, body io.Reader) (*http.Response, error) {
-	response, err := http.Post(w.RouteURL(route), "application/json", body)
+func (w *Waypoint) Keycloak() *Keycloak {
+	return w.keycloak
+}
+
+func (w *Waypoint) Services() *service.Services {
+	return w.waypoint.Services
+}
+
+func (w *Waypoint) Client() *http.Client {
+	return w.apiServer.Client()
+}
+
+func (w *Waypoint) Request(
+	ctx context.Context, method string, route string, body io.Reader,
+) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, method, w.apiServer.URL+route, body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make POST request: %w", err)
+		return nil, fmt.Errorf("create request: %w", err)
 	}
-	return response, nil
+	return w.Client().Do(request)
+}
+
+func (w *Waypoint) RequestWithAccessToken(
+	ctx context.Context, method string, route string, body io.Reader, accessToken string,
+) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, method, w.apiServer.URL+route, body)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+accessToken)
+	return w.Client().Do(request)
 }
