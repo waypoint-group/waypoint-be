@@ -7,6 +7,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
 
 	"github.com/jackc/pgx/v5"
@@ -55,7 +56,7 @@ func (s *UserIdentityService) Create(ctx context.Context, userId uuid.UUID, auth
 		AuthIssuer:  authIssuer,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if db.IsUniqueViolation(err, "user_identities_identity_unique") {
 			return nil, AlreadyExistsError{What: "user identity"}
 		}
 		return nil, fmt.Errorf("create user identity: %w", err)

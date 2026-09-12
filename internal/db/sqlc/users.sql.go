@@ -14,7 +14,6 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, display_name)
 VALUES ($1, $2, $3)
-ON CONFLICT (email) DO NOTHING
 RETURNING id, email, display_name, created_at
 `
 

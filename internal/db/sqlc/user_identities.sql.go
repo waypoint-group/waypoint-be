@@ -14,7 +14,6 @@ import (
 const createUserIdentity = `-- name: CreateUserIdentity :one
 INSERT INTO user_identities (id, user_id, auth_subject, auth_issuer)
 VALUES ($1, $2, $3, $4)
-ON CONFLICT (auth_issuer, auth_subject) DO NOTHING
 RETURNING id, user_id, auth_subject, auth_issuer, created_at
 `
 
