@@ -53,7 +53,7 @@ func (cmd *ServeCommand) Run() (runErr error) {
 	if err != nil {
 		return fmt.Errorf("create Waypoint app: %w", err)
 	}
-	defer app.Database.Close()
+	defer app.Close()
 
 	log.Printf("starting Waypoint server on port %d", cfg.Port)
 	addr := ":" + strconv.Itoa(cfg.Port)
