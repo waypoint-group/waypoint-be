@@ -51,3 +51,7 @@ func New(cfg *Config) (*Waypoint, error) {
 		Handler:  httpHandler.Routes(),
 	}, nil
 }
+
+func (w *Waypoint) Close() {
+	w.Database.Close()
+}
