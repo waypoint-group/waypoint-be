@@ -85,35 +85,47 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// FIXME: User creation and identity creation must happen in
-	// a transaction to ensure atomicity.
-	user, err := h.services.Users.Create(r.Context(), email, displayName)
+	user, err := service.InTx(
+		r.Context(),
+		h.database,
+		func(s *service.Services) (any, error) {
+			user, err := s.Users.Create(r.Context(), email, displayName)
+			if err != nil {
+				return nil, err
+			}
+			_, err = s.UserIdentities.Create(
+				r.Context(),
+				user.ID,
+				claims.Subject,
+				claims.Issuer,
+			)
+			if err != nil {
+				return nil, err
+			}
+			return user, nil
+		},
+	)
 	if err != nil {
 		var alreadyExists service.AlreadyExistsError
 		if errors.As(err, &alreadyExists) {
 			http.Error(w, alreadyExists.Error(), http.StatusConflict)
 			return
+		} else {
+			writeInternalServerError(w, err)
+			return
 		}
-
-		writeInternalServerError(w, err)
-		return
 	}
-	_, err = h.services.UserIdentities.Create(
-		r.Context(),
-		user.ID,
-		claims.Subject,
-		claims.Issuer,
-	)
-	if err != nil {
-		writeInternalServerError(w, err)
-		return
+
+	u, ok := user.(*service.User)
+	if !ok {
+		panic(errors.New("unexpected type returned from transaction"))
 	}
 
 	response := CreateUserResponse{
-		ID:          user.ID.String(),
-		Email:       user.Email,
-		DisplayName: user.DisplayName,
-		CreatedAt:   user.CreatedAt,
+		ID:          u.ID.String(),
+		Email:       u.Email,
+		DisplayName: u.DisplayName,
+		CreatedAt:   u.CreatedAt,
 	}
 	if err := writeJSON(w, http.StatusCreated, response); err != nil {
 		writeInternalServerError(w, err)

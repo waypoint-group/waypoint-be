@@ -2,7 +2,10 @@
 package service
 
 import (
+	"context"
+
 	"github.com/waypoint-group/waypoint-be/internal/db"
+	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
 )
 
 // Services groups the application's domain services.
@@ -23,6 +26,23 @@ func New(database *db.Database) *Services {
 		ChannelMessages: NewChannelMessageService(database),
 		DirectMessages:  NewDirectMessageService(database),
 	}
+}
+
+func InTx(
+	ctx context.Context,
+	database *db.Database,
+	fn func(s *Services) (any, error),
+) (any, error) {
+	return database.InTx(ctx, func(q *sqlc.Queries) (any, error) {
+		s := &Services{
+			Users:           NewUserService(q),
+			UserIdentities:  NewUserIdentityService(q),
+			Channels:        NewChannelService(q),
+			ChannelMessages: NewChannelMessageService(q),
+			DirectMessages:  NewDirectMessageService(q),
+		}
+		return fn(s)
+	})
 }
 
 // NotFoundError indicates that a requested domain resource does not exist.

@@ -3,10 +3,12 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -32,6 +34,38 @@ func New(ctx context.Context, databaseURL string) (*Database, error) {
 		pool:    pool,
 		Queries: sqlc.New(pool),
 	}, nil
+}
+
+func (db *Database) InTx(
+	ctx context.Context,
+	fn func(*sqlc.Queries) (any, error),
+) (result any, inTxErr error) {
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction: %w", err)
+	}
+
+	defer func() {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			inTxErr = errors.Join(
+				inTxErr,
+				fmt.Errorf("rollback transaction: %w", err),
+			)
+		}
+	}()
+
+	qtx := db.WithTx(tx)
+	res, err := fn(qtx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return res, nil
 }
 
 // Ping verifies that PostgreSQL is reachable.
