@@ -113,8 +113,8 @@ func TestUserIdentity_List(t *testing.T) {
 }
 
 func TestUserIdentity_GetUserByIdentity(t *testing.T) {
-	first := sqlc.User{ID: uuid.New(), Email: "ada@example.com", DisplayName: "Ada Lovelace", CreatedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true}}
-	second := sqlc.User{ID: uuid.New(), Email: "grace@example.com", DisplayName: "Grace Hopper", CreatedAt: first.CreatedAt}
+	first := sqlc.User{ID: uuid.New(), Email: "ada@example.com", UserName: "ada", DisplayName: "Ada Lovelace", CreatedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true}}
+	second := sqlc.User{ID: uuid.New(), Email: "grace@example.com", UserName: "grace", DisplayName: "Grace Hopper", CreatedAt: first.CreatedAt}
 	store := &userIdentityStoreStub{users: []sqlc.User{first, second}, identities: []sqlc.UserIdentity{
 		{UserID: first.ID, AuthSubject: "shared-subject", AuthIssuer: "issuer-one"},
 		{UserID: second.ID, AuthSubject: "shared-subject", AuthIssuer: "issuer-two"},
@@ -134,7 +134,14 @@ func TestUserIdentity_GetUserByIdentity(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GetUserByIdentity returned error: %v", err)
 			}
-			want := service.User{ID: tc.want.ID, Email: tc.want.Email, DisplayName: tc.want.DisplayName, CreatedAt: tc.want.CreatedAt.Time}
+
+			want := service.User{
+				ID:          tc.want.ID,
+				Email:       tc.want.Email,
+				UserName:    tc.want.UserName,
+				DisplayName: tc.want.DisplayName,
+				CreatedAt:   tc.want.CreatedAt.Time,
+			}
 			if *got != want {
 				t.Errorf("expected %+v, got %+v", want, got)
 			}

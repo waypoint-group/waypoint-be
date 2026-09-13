@@ -12,23 +12,30 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, email, display_name)
-VALUES ($1, $2, $3)
-RETURNING id, email, display_name, created_at
+INSERT INTO users (id, email, user_name, display_name)
+VALUES ($1, $2, $3, $4)
+RETURNING id, email, user_name, display_name, created_at
 `
 
 type CreateUserParams struct {
 	ID          uuid.UUID
 	Email       string
+	UserName    string
 	DisplayName string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.ID, arg.Email, arg.DisplayName)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
+		arg.Email,
+		arg.UserName,
+		arg.DisplayName,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.UserName,
 		&i.DisplayName,
 		&i.CreatedAt,
 	)
@@ -36,9 +43,9 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, display_name, created_at
+SELECT id, email, user_name, display_name, created_at
 FROM users
-ORDER BY display_name
+ORDER BY id
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -53,6 +60,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Email,
+			&i.UserName,
 			&i.DisplayName,
 			&i.CreatedAt,
 		); err != nil {
@@ -67,7 +75,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 const selectUser = `-- name: SelectUser :one
-SELECT id, email, display_name, created_at
+SELECT id, email, user_name, display_name, created_at
 FROM users
 WHERE id = $1
 `
@@ -78,6 +86,7 @@ func (q *Queries) SelectUser(ctx context.Context, id uuid.UUID) (User, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.UserName,
 		&i.DisplayName,
 		&i.CreatedAt,
 	)
@@ -85,7 +94,7 @@ func (q *Queries) SelectUser(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const selectUserByIdentity = `-- name: SelectUserByIdentity :one
-SELECT u.id, u.email, u.display_name, u.created_at
+SELECT u.id, u.email, u.user_name, u.display_name, u.created_at
 FROM users AS u
 JOIN user_identities AS i ON u.id = i.user_id
 WHERE i.auth_subject = $1 AND i.auth_issuer = $2
@@ -102,6 +111,7 @@ func (q *Queries) SelectUserByIdentity(ctx context.Context, arg SelectUserByIden
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
+		&i.UserName,
 		&i.DisplayName,
 		&i.CreatedAt,
 	)

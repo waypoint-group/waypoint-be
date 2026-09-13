@@ -20,9 +20,7 @@ func TestHealth_HealthCheckOk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
-	defer func() {
-		_ = response.Body.Close()
-	}()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", response.StatusCode)
@@ -40,9 +38,7 @@ func TestHealth_ReadyCheckOk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to send request: %v", err)
 	}
-	defer func() {
-		_ = response.Body.Close()
-	}()
+	defer func() { _ = response.Body.Close() }()
 
 	if response.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", response.StatusCode)

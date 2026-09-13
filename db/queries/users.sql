@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (id, email, display_name)
-VALUES ($1, $2, $3)
+INSERT INTO users (id, email, user_name, display_name)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: SelectUser :one
@@ -17,4 +17,4 @@ WHERE i.auth_subject = $1 AND i.auth_issuer = $2;
 -- name: ListUsers :many
 SELECT *
 FROM users
-ORDER BY display_name;
+ORDER BY id;

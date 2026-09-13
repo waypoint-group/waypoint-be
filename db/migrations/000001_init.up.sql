@@ -1,6 +1,7 @@
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     email TEXT NOT NULL CONSTRAINT users_email_unique UNIQUE,
+    user_name TEXT NOT NULL CONSTRAINT users_username_unique UNIQUE,
     display_name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

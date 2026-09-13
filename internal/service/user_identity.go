@@ -133,6 +133,7 @@ func (s *UserIdentityService) GetUserByIdentity(ctx context.Context, authSubject
 	return &User{
 		ID:          user.ID,
 		Email:       user.Email,
+		UserName:    user.UserName,
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt.Time,
 	}, nil

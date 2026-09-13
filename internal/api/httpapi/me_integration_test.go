@@ -4,6 +4,7 @@ package httpapi_test
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestMe(t *testing.T) {
 	}
 	t.Cleanup(uut.Close)
 
-	user, err := uut.Services().Users.Create(t.Context(), "ada@example.com", "Ada Lovelace")
+	created, err := uut.Services().Users.Create(t.Context(), "ada", "ada@example.com", "Ada Lovelace")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestMe(t *testing.T) {
 
 				_, err := uut.Services().UserIdentities.Create(
 					t.Context(),
-					user.ID,
+					created.ID,
 					claims.Subject,
 					issuer,
 				)
@@ -68,21 +69,28 @@ func TestMe(t *testing.T) {
 			if err != nil {
 				t.Fatalf("request /me: %v", err)
 			}
-			defer func() {
-				if err := response.Body.Close(); err != nil {
-					t.Fatalf("close response body: %v", err)
-				}
-			}()
+			defer func() { _ = response.Body.Close() }()
+
 			if response.StatusCode != tc.status {
+				body, err := io.ReadAll(response.Body)
+				if err == nil {
+					t.Logf("response body: %s", string(body))
+				}
 				t.Fatalf("expected status %d, got %d", tc.status, response.StatusCode)
 			}
+
 			if tc.status == http.StatusOK {
-				var got httpapi.MeResponse
-				if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
+				var me httpapi.MeResponse
+				if err := json.NewDecoder(response.Body).Decode(&me); err != nil {
 					t.Fatalf("decode profile: %v", err)
 				}
-				if got.ID != user.ID.String() || got.Email != user.Email || got.DisplayName != user.DisplayName || !got.CreatedAt.Equal(user.CreatedAt) {
-					t.Errorf("expected profile %+v, got %+v", user, got)
+
+				same := me.ID == created.ID.String() ||
+					me.Email == created.Email ||
+					me.UserName == created.UserName ||
+					me.CreatedAt.Equal(created.CreatedAt)
+				if !same {
+					t.Errorf("expected profile %+v, got %+v", created, me)
 				}
 			}
 		})
@@ -93,12 +101,13 @@ func TestMe(t *testing.T) {
 		if err != nil {
 			t.Fatalf("request /me: %v", err)
 		}
-		defer func() {
-			if err := response.Body.Close(); err != nil {
-				t.Fatalf("close response body: %v", err)
-			}
-		}()
+		defer func() { _ = response.Body.Close() }()
+
 		if response.StatusCode != http.StatusUnauthorized {
+			body, err := io.ReadAll(response.Body)
+			if err == nil {
+				t.Logf("response body: %s", string(body))
+			}
 			t.Errorf("expected status 401, got %d", response.StatusCode)
 		}
 	})

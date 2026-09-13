@@ -31,6 +31,8 @@ type User struct {
 	ID uuid.UUID
 	// Email is the user's email address.
 	Email string
+	// UserName is the name shown for the user.
+	UserName string
 	// DisplayName is the name shown for the user.
 	DisplayName string
 	// CreatedAt is the time at which the user was created.
@@ -44,16 +46,22 @@ func NewUserService(store UserStore) *UserService {
 }
 
 // Create creates a new user and returns it.
-func (s *UserService) Create(ctx context.Context, email string, displayName string) (*User, error) {
+func (s *UserService) Create(ctx context.Context, email string, userName, displayName string) (*User, error) {
 	user, err := s.store.CreateUser(ctx, sqlc.CreateUserParams{
 		ID:          uuid.NewV7(),
 		Email:       email,
+		UserName:    userName,
 		DisplayName: displayName,
 	})
 	if err != nil {
 		if db.IsUniqueViolation(err, "users_email_unique") {
 			return nil, AlreadyExistsError{
 				What: "email",
+			}
+		}
+		if db.IsUniqueViolation(err, "users_user_name_unique") {
+			return nil, AlreadyExistsError{
+				What: "user_name",
 			}
 		}
 
@@ -63,6 +71,7 @@ func (s *UserService) Create(ctx context.Context, email string, displayName stri
 	return &User{
 		ID:          user.ID,
 		Email:       user.Email,
+		UserName:    user.UserName,
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt.Time,
 	}, nil
@@ -84,6 +93,7 @@ func (s *UserService) Get(ctx context.Context, id uuid.UUID) (*User, error) {
 	return &User{
 		ID:          user.ID,
 		Email:       user.Email,
+		UserName:    user.UserName,
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt.Time,
 	}, nil
@@ -101,6 +111,7 @@ func (s *UserService) List(ctx context.Context) ([]User, error) {
 		result = append(result, User{
 			ID:          user.ID,
 			Email:       user.Email,
+			UserName:    user.UserName,
 			DisplayName: user.DisplayName,
 			CreatedAt:   user.CreatedAt.Time,
 		})

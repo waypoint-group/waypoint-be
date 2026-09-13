@@ -16,6 +16,8 @@ type MeResponse struct {
 	ID string `json:"id"`
 	// Email is the user's email address.
 	Email string `json:"email"`
+	// UserName is the user's handle.
+	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
 	DisplayName string `json:"display_name"`
 	// CreatedAt is the time at which the user was created.
@@ -64,6 +66,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		MeResponse{
 			ID:          user.ID.String(),
 			Email:       user.Email,
+			UserName:    user.UserName,
 			DisplayName: user.DisplayName,
 			CreatedAt:   user.CreatedAt,
 		},

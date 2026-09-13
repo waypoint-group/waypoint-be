@@ -16,6 +16,8 @@ import (
 type CreateUserRequest struct {
 	// Email is the user's email address.
 	Email string `json:"email"`
+	// UserName is the user's handle.
+	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
 	DisplayName string `json:"display_name"`
 }
@@ -26,6 +28,8 @@ type CreateUserResponse struct {
 	ID string `json:"id"`
 	// Email is the user's email address.
 	Email string `json:"email"`
+	// UserName is the user's handle.
+	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
 	DisplayName string `json:"display_name"`
 	// CreatedAt is the time at which the user was created.
@@ -38,6 +42,8 @@ type GetUserResponse struct {
 	ID string `json:"id"`
 	// Email is the user's email address.
 	Email string `json:"email"`
+	// UserName is the user's handle.
+	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
 	DisplayName string `json:"display_name"`
 	// CreatedAt is the time at which the user was created.
@@ -78,9 +84,10 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := strings.TrimSpace(request.Email)
+	userName := strings.TrimSpace(request.UserName)
 	displayName := strings.TrimSpace(request.DisplayName)
 
-	if email == "" || displayName == "" {
+	if email == "" || userName == "" || displayName == "" {
 		writeInvalidRequestBody(w, errors.New("email and display name are required"))
 		return
 	}
@@ -89,7 +96,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		h.database,
 		func(s *service.Services) (any, error) {
-			user, err := s.Users.Create(r.Context(), email, displayName)
+			user, err := s.Users.Create(r.Context(), email, userName, displayName)
 			if err != nil {
 				return nil, err
 			}
@@ -124,6 +131,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	response := CreateUserResponse{
 		ID:          u.ID.String(),
 		Email:       u.Email,
+		UserName:    u.UserName,
 		DisplayName: u.DisplayName,
 		CreatedAt:   u.CreatedAt,
 	}
@@ -155,6 +163,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	response := GetUserResponse{
 		ID:          user.ID.String(),
 		Email:       user.Email,
+		UserName:    user.UserName,
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt,
 	}
@@ -176,6 +185,7 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		response.Users = append(response.Users, GetUserResponse{
 			ID:          user.ID.String(),
 			Email:       user.Email,
+			UserName:    user.UserName,
 			DisplayName: user.DisplayName,
 			CreatedAt:   user.CreatedAt,
 		})
