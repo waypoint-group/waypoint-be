@@ -7,6 +7,8 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/golang-jwt/jwt/v5/request"
+	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/service"
 )
 
@@ -14,6 +16,8 @@ import (
 type CreateUserRequest struct {
 	// Email is the user's email address.
 	Email string `json:"email"`
+	// UserName is the user's handle.
+	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
 	DisplayName string `json:"display_name"`
 }
@@ -24,6 +28,8 @@ type CreateUserResponse struct {
 	ID string `json:"id"`
 	// Email is the user's email address.
 	Email string `json:"email"`
+	// UserName is the user's handle.
+	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
 	DisplayName string `json:"display_name"`
 	// CreatedAt is the time at which the user was created.
@@ -36,6 +42,8 @@ type GetUserResponse struct {
 	ID string `json:"id"`
 	// Email is the user's email address.
 	Email string `json:"email"`
+	// UserName is the user's handle.
+	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
 	DisplayName string `json:"display_name"`
 	// CreatedAt is the time at which the user was created.
@@ -50,6 +58,25 @@ type ListUsersResponse struct {
 
 // CreateUser validates and creates a user from the request body.
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	// Forbid duplicate authorization headers.
+	headers := r.Header.Values("Authorization")
+	if len(headers) != 1 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	rawJWT, err := (request.BearerExtractor{}).ExtractToken(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	_, claims, err := middleware.ValidateJWT(rawJWT, h.jwtConfig)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var request CreateUserRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeInvalidRequestBody(w, err)
@@ -57,30 +84,56 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := strings.TrimSpace(request.Email)
+	userName := strings.TrimSpace(request.UserName)
 	displayName := strings.TrimSpace(request.DisplayName)
 
-	if email == "" || displayName == "" {
-		writeInvalidRequestBody(w, errors.New("email and display name are required"))
+	if email == "" || userName == "" || displayName == "" {
+		writeInvalidRequestBody(w, errors.New("email, user name, and display name are required"))
 		return
 	}
 
-	user, err := h.services.Users.CreateUser(r.Context(), email, displayName)
+	user, err := service.InTx(
+		r.Context(),
+		h.database,
+		func(s *service.Services) (any, error) {
+			user, err := s.Users.Create(r.Context(), email, userName, displayName)
+			if err != nil {
+				return nil, err
+			}
+			_, err = s.UserIdentities.Create(
+				r.Context(),
+				user.ID,
+				claims.Subject,
+				claims.Issuer,
+			)
+			if err != nil {
+				return nil, err
+			}
+			return user, nil
+		},
+	)
 	if err != nil {
 		var alreadyExists service.AlreadyExistsError
 		if errors.As(err, &alreadyExists) {
 			http.Error(w, alreadyExists.Error(), http.StatusConflict)
 			return
+		} else {
+			writeInternalServerError(w, err)
+			return
 		}
+	}
 
-		writeInternalServerError(w, err)
-		return
+	u, ok := user.(*service.User)
+	if !ok {
+		panic(errors.New("unexpected type returned from transaction"))
 	}
 
 	response := CreateUserResponse{
-		ID:          user.ID.String(),
-		Email:       user.Email,
-		DisplayName: user.DisplayName,
-		CreatedAt:   user.CreatedAt,
+		ID:          u.ID.String(),
+		Email:       u.Email,
+		UserName:    u.UserName,
+		DisplayName: u.DisplayName,
+		CreatedAt:   u.CreatedAt,
 	}
 	if err := writeJSON(w, http.StatusCreated, response); err != nil {
 		writeInternalServerError(w, err)
@@ -95,7 +148,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.services.Users.GetUser(r.Context(), ID)
+	user, err := h.services.Users.Get(r.Context(), ID)
 	if err != nil {
 		var notFound service.NotFoundError
 		if errors.As(err, &notFound) {
@@ -110,6 +163,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	response := GetUserResponse{
 		ID:          user.ID.String(),
 		Email:       user.Email,
+		UserName:    user.UserName,
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt,
 	}
@@ -120,17 +174,18 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 // ListUsers writes all users returned by the user service.
 func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.services.Users.ListUsers(r.Context())
+	users, err := h.services.Users.List(r.Context())
 	if err != nil {
 		writeInternalServerError(w, err)
 		return
 	}
 
-	response := ListUsersResponse{}
+	response := ListUsersResponse{Users: make([]GetUserResponse, 0, len(users))}
 	for _, user := range users {
 		response.Users = append(response.Users, GetUserResponse{
 			ID:          user.ID.String(),
 			Email:       user.Email,
+			UserName:    user.UserName,
 			DisplayName: user.DisplayName,
 			CreatedAt:   user.CreatedAt,
 		})

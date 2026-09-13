@@ -45,7 +45,16 @@ type DirectMessage struct {
 type User struct {
 	ID          uuid.UUID
 	Email       string
+	UserName    string
 	DisplayName string
+	CreatedAt   pgtype.Timestamptz
+}
+
+type UserIdentity struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	AuthSubject string
+	AuthIssuer  string
 	CreatedAt   pgtype.Timestamptz
 }
 

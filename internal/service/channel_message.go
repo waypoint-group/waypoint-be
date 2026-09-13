@@ -54,8 +54,8 @@ func NewChannelMessageService(store ChannelMessageStore) *ChannelMessageService 
 	}
 }
 
-// CreateChannelMessage creates a new channel message and returns it.
-func (s *ChannelMessageService) CreateChannelMessage(ctx context.Context,
+// Create creates a new channel message and returns it.
+func (s *ChannelMessageService) Create(ctx context.Context,
 	authorID uuid.UUID,
 	channelID uuid.UUID,
 	body string,
@@ -84,8 +84,8 @@ func (s *ChannelMessageService) CreateChannelMessage(ctx context.Context,
 	}, nil
 }
 
-// GetChannelMessage retrieves a channel message by its ID.
-func (s *ChannelMessageService) GetChannelMessage(ctx context.Context, id uuid.UUID) (*ChannelMessage, error) {
+// Get retrieves a channel message by its ID.
+func (s *ChannelMessageService) Get(ctx context.Context, id uuid.UUID) (*ChannelMessage, error) {
 	channelMsg, err := s.store.SelectChannelMessage(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -109,9 +109,8 @@ func (s *ChannelMessageService) GetChannelMessage(ctx context.Context, id uuid.U
 	}, nil
 }
 
-// GetChannelMessagePage returns a page of channel messages for a given
-// channel ID.
-func (s *ChannelMessageService) GetChannelMessagePage(ctx context.Context, channelID uuid.UUID, limit int32, offset int32) ([]ChannelMessage, error) {
+// GetPage returns a page of channel messages for a given channel ID.
+func (s *ChannelMessageService) GetPage(ctx context.Context, channelID uuid.UUID, limit int32, offset int32) ([]ChannelMessage, error) {
 	channelMsgs, err := s.store.ListChannelMessages(ctx, sqlc.ListChannelMessagesParams{
 		ChannelID: channelID,
 		Limit:     limit,
@@ -166,8 +165,8 @@ func (s *ChannelMessageService) GetChannelThreadMessages(ctx context.Context, th
 	return result, nil
 }
 
-// UpdateChannelMessage updates the body of an existing channel message.
-func (s *ChannelMessageService) UpdateChannelMessage(ctx context.Context, id uuid.UUID, body string) (*ChannelMessage, error) {
+// Update updates the body of an existing channel message.
+func (s *ChannelMessageService) Update(ctx context.Context, id uuid.UUID, body string) (*ChannelMessage, error) {
 	channelMsg, err := s.store.UpdateChannelMessageBody(ctx, sqlc.UpdateChannelMessageBodyParams{
 		ID:   id,
 		Body: body,
@@ -191,8 +190,8 @@ func (s *ChannelMessageService) UpdateChannelMessage(ctx context.Context, id uui
 	}, nil
 }
 
-// DeleteChannelMessage removes a channel message by its ID.
-func (s *ChannelMessageService) DeleteChannelMessage(ctx context.Context, id uuid.UUID) error {
+// Delete removes a channel message by its ID.
+func (s *ChannelMessageService) Delete(ctx context.Context, id uuid.UUID) error {
 	rows, err := s.store.DeleteChannelMessage(ctx, id)
 	if err != nil {
 		return fmt.Errorf("delete channel message: %w", err)

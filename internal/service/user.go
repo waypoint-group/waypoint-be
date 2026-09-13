@@ -7,6 +7,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
 
 	"github.com/jackc/pgx/v5"
@@ -30,6 +31,8 @@ type User struct {
 	ID uuid.UUID
 	// Email is the user's email address.
 	Email string
+	// UserName is the name shown for the user.
+	UserName string
 	// DisplayName is the name shown for the user.
 	DisplayName string
 	// CreatedAt is the time at which the user was created.
@@ -42,17 +45,23 @@ func NewUserService(store UserStore) *UserService {
 	}
 }
 
-// CreateUser creates a new user and returns it.
-func (s *UserService) CreateUser(ctx context.Context, email string, displayName string) (*User, error) {
+// Create creates a new user and returns it.
+func (s *UserService) Create(ctx context.Context, email string, userName, displayName string) (*User, error) {
 	user, err := s.store.CreateUser(ctx, sqlc.CreateUserParams{
 		ID:          uuid.NewV7(),
 		Email:       email,
+		UserName:    userName,
 		DisplayName: displayName,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if db.IsUniqueViolation(err, "users_email_unique") {
 			return nil, AlreadyExistsError{
 				What: "email",
+			}
+		}
+		if db.IsUniqueViolation(err, "users_user_name_unique") {
+			return nil, AlreadyExistsError{
+				What: "user_name",
 			}
 		}
 
@@ -62,13 +71,14 @@ func (s *UserService) CreateUser(ctx context.Context, email string, displayName 
 	return &User{
 		ID:          user.ID,
 		Email:       user.Email,
+		UserName:    user.UserName,
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt.Time,
 	}, nil
 }
 
-// GetUser retrieves a user by UUID.
-func (s *UserService) GetUser(ctx context.Context, id uuid.UUID) (*User, error) {
+// Get retrieves a user by UUID.
+func (s *UserService) Get(ctx context.Context, id uuid.UUID) (*User, error) {
 	user, err := s.store.SelectUser(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -83,13 +93,14 @@ func (s *UserService) GetUser(ctx context.Context, id uuid.UUID) (*User, error) 
 	return &User{
 		ID:          user.ID,
 		Email:       user.Email,
+		UserName:    user.UserName,
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt.Time,
 	}, nil
 }
 
-// ListUsers returns all users ordered by display name.
-func (s *UserService) ListUsers(ctx context.Context) ([]User, error) {
+// List returns all users ordered by display name.
+func (s *UserService) List(ctx context.Context) ([]User, error) {
 	users, err := s.store.ListUsers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
@@ -100,6 +111,7 @@ func (s *UserService) ListUsers(ctx context.Context) ([]User, error) {
 		result = append(result, User{
 			ID:          user.ID,
 			Email:       user.Email,
+			UserName:    user.UserName,
 			DisplayName: user.DisplayName,
 			CreatedAt:   user.CreatedAt.Time,
 		})
