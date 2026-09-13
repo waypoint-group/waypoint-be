@@ -64,7 +64,7 @@ TOKEN='PASTE_ACCESS_TOKEN_HERE'
 curl --fail-with-body http://localhost:8080/users \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com", "user_name": "some-guy", display_name":"xXSomeGuyXx"}'
+  -d '{"email":"you@example.com", "user_name": "some-guy", "display_name":"xXSomeGuyXx"}'
 curl --fail-with-body http://localhost:8080/me -H "Authorization: Bearer $TOKEN"
 ```
 
