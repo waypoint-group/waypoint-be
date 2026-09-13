@@ -141,10 +141,10 @@ func TestUsers_Get(t *testing.T) {
 		t.Fatalf("failed to decode user: %v", err)
 	}
 
-	same := get.ID == created.ID ||
-		get.Email == created.Email ||
-		get.UserName == created.UserName ||
-		get.DisplayName == created.DisplayName ||
+	same := get.ID == created.ID &&
+		get.Email == created.Email &&
+		get.UserName == created.UserName &&
+		get.DisplayName == created.DisplayName &&
 		get.CreatedAt.Equal(created.CreatedAt)
 	if !same {
 		t.Errorf("expected user %+v, got %+v", created, get)
@@ -252,8 +252,8 @@ func createTestUser(t *testing.T, uut *testlib.Waypoint, email, userName, displa
 	if _, err := uuid.Parse(user.ID); err != nil {
 		t.Errorf("expected a valid user UUID, got %q: %v", user.ID, err)
 	}
-	if user.Email != email || user.DisplayName != displayName {
-		t.Errorf("expected email %q and display name %q, got %+v", email, displayName, user)
+	if user.Email != email || user.UserName != userName || user.DisplayName != displayName {
+		t.Errorf("expected email %q, user name %q, and display name %q, got %+v", email, userName, displayName, user)
 	}
 	if user.CreatedAt.IsZero() {
 		t.Error("expected a nonzero creation timestamp")
@@ -285,10 +285,10 @@ func assertUsers(t *testing.T, uut *testlib.Waypoint, want []httpapi.CreateUserR
 		t.Fatalf("expected %d users, got %d: %+v", len(want), len(list.Users), list.Users)
 	}
 	for i, user := range list.Users {
-		same := user.ID == want[i].ID ||
-			user.Email == want[i].Email ||
-			user.UserName == want[i].UserName ||
-			user.DisplayName == want[i].DisplayName ||
+		same := user.ID == want[i].ID &&
+			user.Email == want[i].Email &&
+			user.UserName == want[i].UserName &&
+			user.DisplayName == want[i].DisplayName &&
 			user.CreatedAt.Equal(want[i].CreatedAt)
 		if !same {
 			t.Errorf("expected user at index %d to be %+v, got %+v", i, want[i], user)

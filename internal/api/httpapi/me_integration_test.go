@@ -20,7 +20,7 @@ func TestMe(t *testing.T) {
 	}
 	t.Cleanup(uut.Close)
 
-	created, err := uut.Services().Users.Create(t.Context(), "ada", "ada@example.com", "Ada Lovelace")
+	created, err := uut.Services().Users.Create(t.Context(), "ada@example.com", "ada", "Ada Lovelace")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
@@ -85,9 +85,10 @@ func TestMe(t *testing.T) {
 					t.Fatalf("decode profile: %v", err)
 				}
 
-				same := me.ID == created.ID.String() ||
-					me.Email == created.Email ||
-					me.UserName == created.UserName ||
+				same := me.ID == created.ID.String() &&
+					me.Email == created.Email &&
+					me.UserName == created.UserName &&
+					me.DisplayName == created.DisplayName &&
 					me.CreatedAt.Equal(created.CreatedAt)
 				if !same {
 					t.Errorf("expected profile %+v, got %+v", created, me)
