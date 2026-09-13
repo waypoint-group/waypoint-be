@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
@@ -28,6 +29,13 @@ type JWTConfig struct {
 
 // Run starts the Waypoint HTTP server.
 func (cmd *ServeCommand) Run() (runErr error) {
+	if strings.TrimSpace(cmd.JWT.Issuer) == "" {
+		return fmt.Errorf("JWT issuer is required")
+	}
+	if strings.TrimSpace(cmd.JWT.Audience) == "" {
+		return fmt.Errorf("JWT audience is required")
+	}
+
 	OIDCProvider, err := middleware.DiscoverOIDCProvider(cmd.JWT.Issuer)
 	if err != nil {
 		return fmt.Errorf("discover OIDC provider: %w", err)
