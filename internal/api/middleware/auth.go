@@ -37,6 +37,11 @@ func DiscoverOIDCProvider(issuer string) (*OIDCProvider, error) {
 	if err != nil {
 		return nil, fmt.Errorf("request OIDC discovery: %w", err)
 	}
+	defer func() { _ = response.Body.Close() }()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("OIDC discovery returned %s", response.Status)
+	}
 
 	var provider OIDCProvider
 	if err := json.NewDecoder(response.Body).Decode(&provider); err != nil {
