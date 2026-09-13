@@ -88,7 +88,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	displayName := strings.TrimSpace(request.DisplayName)
 
 	if email == "" || userName == "" || displayName == "" {
-		writeInvalidRequestBody(w, errors.New("email and display name are required"))
+		writeInvalidRequestBody(w, errors.New("email, user name, and display name are required"))
 		return
 	}
 
