@@ -21,6 +21,7 @@ func (s *userStoreStub) CreateUser(_ context.Context, params sqlc.CreateUserPara
 	user := sqlc.User{
 		ID:          params.ID,
 		Email:       params.Email,
+		UserName:    params.UserName,
 		DisplayName: params.DisplayName,
 		CreatedAt:   pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	}
@@ -45,7 +46,7 @@ func (s *userStoreStub) ListUsers(context.Context) ([]sqlc.User, error) {
 func TestUser_CreateAndSelect(t *testing.T) {
 	uut := service.NewUserService(&userStoreStub{})
 
-	createdUser, err := uut.Create(t.Context(), "ada", "ada@example.com", "Ada Lovelace")
+	createdUser, err := uut.Create(t.Context(), "ada@example.com", "ada", "Ada Lovelace")
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
 	}
@@ -82,12 +83,12 @@ func TestUser_SelectMissing(t *testing.T) {
 func TestUser_List(t *testing.T) {
 	uut := service.NewUserService(&userStoreStub{})
 
-	user1, err := uut.Create(t.Context(), "user1", "user1@example.com", "User One")
+	user1, err := uut.Create(t.Context(), "user1@example.com", "user1", "User One")
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
 	}
 
-	user2, err := uut.Create(t.Context(), "user2", "user2@example.com", "User Two")
+	user2, err := uut.Create(t.Context(), "user2@example.com", "user2", "User Two")
 	if err != nil {
 		t.Fatalf("Create returned error: %v", err)
 	}
