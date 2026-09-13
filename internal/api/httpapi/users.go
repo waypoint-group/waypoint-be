@@ -180,7 +180,7 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := ListUsersResponse{}
+	response := ListUsersResponse{Users: make([]GetUserResponse, 0, len(users))}
 	for _, user := range users {
 		response.Users = append(response.Users, GetUserResponse{
 			ID:          user.ID.String(),
