@@ -23,6 +23,8 @@ import (
 //go:embed testdata/realm.json
 var keycloakRealm []byte
 
+var waypointAudience = "waypoint-api"
+
 type Keycloak struct {
 	ctr        *testcontainers.DockerContainer
 	URL        string
@@ -71,7 +73,7 @@ func NewKeycloak() (*Keycloak, error) {
 	}
 	kc.JWTConfig = middleware.JWTConfig{
 		Issuer:   issuerURL,
-		Audience: "waypoint-api",
+		Audience: waypointAudience,
 		KeyFunc:  keys.Keyfunc,
 	}
 	return kc, nil
