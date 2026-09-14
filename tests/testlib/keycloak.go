@@ -20,10 +20,8 @@ import (
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 )
 
-//go:embed testdata/realm.json
-var keycloakRealm []byte
-
-var waypointAudience = "waypoint-api"
+//go:embed testdata/waypoint-realm.json
+var waypointRealm []byte
 
 type Keycloak struct {
 	ctr        *testcontainers.DockerContainer
@@ -36,19 +34,23 @@ func NewKeycloak() (*Keycloak, error) {
 	parent, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
+	keycloakPort := "8080/tcp"
+	waypointRealmPath := "/realms/waypoint"
+	waypointAudience := "waypoint-api"
+
 	ctr, err := testcontainers.Run(
 		parent,
 		"quay.io/keycloak/keycloak:26.7.3",
 		testcontainers.WithCmd("start-dev", "--import-realm"),
-		testcontainers.WithExposedPorts("8080/tcp"),
+		testcontainers.WithExposedPorts(keycloakPort),
 		testcontainers.WithFiles(testcontainers.ContainerFile{
 			ContainerFilePath: "/opt/keycloak/data/import/waypoint-realm.json",
-			Reader:            bytes.NewReader(keycloakRealm),
+			Reader:            bytes.NewReader(waypointRealm),
 			FileMode:          0o644, // rw-r--r--
 		}),
 		testcontainers.WithWaitStrategy(
-			wait.ForHTTP("/realms/waypoint/.well-known/openid-configuration").
-				WithPort("8080/tcp").
+			wait.ForHTTP(waypointRealmPath+"/.well-known/openid-configuration").
+				WithPort(keycloakPort).
 				WithStartupTimeout(2*time.Minute),
 		),
 	)
@@ -57,12 +59,12 @@ func NewKeycloak() (*Keycloak, error) {
 		return nil, errors.Join(fmt.Errorf("failed to start Keycloak: %w", err), kc.Close())
 	}
 
-	kc.URL, err = ctr.PortEndpoint(parent, "8080/tcp", "http")
+	kc.URL, err = ctr.PortEndpoint(parent, keycloakPort, "http")
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("failed to get Keycloak URL: %w", err), kc.Close())
 	}
 
-	issuerURL := kc.URL + "/realms/waypoint"
+	issuerURL := kc.URL + waypointRealmPath
 	keysCtx, cancelKeys := context.WithCancel(context.Background())
 	kc.cancelKeys = cancelKeys
 
