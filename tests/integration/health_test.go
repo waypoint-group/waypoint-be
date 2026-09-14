@@ -1,12 +1,12 @@
 //go:build integration
 
-package httpapi_test
+package integration
 
 import (
 	"net/http"
 	"testing"
 
-	"github.com/waypoint-group/waypoint-be/internal/testlib"
+	"github.com/waypoint-group/waypoint-be/tests/testlib"
 )
 
 func TestHealth_HealthCheckOk(t *testing.T) {

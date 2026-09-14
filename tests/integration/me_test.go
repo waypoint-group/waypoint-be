@@ -1,6 +1,6 @@
 //go:build integration
 
-package httpapi_test
+package integration
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
-	"github.com/waypoint-group/waypoint-be/internal/testlib"
+	"github.com/waypoint-group/waypoint-be/tests/testlib"
 )
 
 func TestMe(t *testing.T) {

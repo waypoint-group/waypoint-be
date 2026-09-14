@@ -1,6 +1,6 @@
 //go:build integration
 
-package httpapi_test
+package integration
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"uuid"
 
 	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
-	"github.com/waypoint-group/waypoint-be/internal/testlib"
+	"github.com/waypoint-group/waypoint-be/tests/testlib"
 )
 
 func TestUsers_Create(t *testing.T) {
