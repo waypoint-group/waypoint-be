@@ -82,7 +82,7 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, destination any) error {
 	return nil
 }
 
-func writeJSON(w http.ResponseWriter, status int, value any) error {
+func writeJSONResponse(w http.ResponseWriter, status int, value any) error {
 	payload, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func writeJSON(w http.ResponseWriter, status int, value any) error {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_, err = w.Write(append(payload, '\n'))
+	_, err = w.Write(payload)
 	return err
 }
 

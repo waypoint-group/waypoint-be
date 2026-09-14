@@ -60,7 +60,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = writeJSON(
+	err = writeJSONResponse(
 		w,
 		http.StatusOK,
 		MeResponse{
