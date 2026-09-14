@@ -5,16 +5,10 @@ package integration
 import (
 	"net/http"
 	"testing"
-
-	"github.com/waypoint-group/waypoint-be/tests/testlib"
 )
 
 func TestHealth_HealthCheckOk(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	defer uut.Close()
+	uut := newWaypoint(t, false)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/healthz", nil)
 	if err != nil {
@@ -28,11 +22,7 @@ func TestHealth_HealthCheckOk(t *testing.T) {
 }
 
 func TestHealth_ReadyCheckOk(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	defer uut.Close()
+	uut := newWaypoint(t, false)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/readyz", nil)
 	if err != nil {

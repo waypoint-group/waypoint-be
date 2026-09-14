@@ -16,15 +16,11 @@ import (
 )
 
 func TestUsers_Create(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	defer uut.Close()
+	uut := newWaypoint(t, true)
 
 	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	t.Run("duplicate email", func(t *testing.T) {
-		token, err := uut.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
+		token, err := keycloak(t).AccessToken(t.Context(), "linked-ada", "test-password")
 		if err != nil {
 			t.Fatalf("log into Keycloak: %v", err)
 		}
@@ -55,14 +51,10 @@ func TestUsers_Create(t *testing.T) {
 }
 
 func TestUsers_CreateDuplicateIdentity(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	t.Cleanup(uut.Close)
+	uut := newWaypoint(t, true)
 
 	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
-	token, err := uut.Keycloak().AccessToken(t.Context(), "ada", "test-password")
+	token, err := keycloak(t).AccessToken(t.Context(), "ada", "test-password")
 	if err != nil {
 		t.Fatalf("log into Keycloak: %v", err)
 	}
@@ -115,11 +107,7 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 }
 
 func TestUsers_Get(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	defer uut.Close()
+	uut := newWaypoint(t, true)
 
 	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users/"+created.ID, nil)
@@ -152,11 +140,7 @@ func TestUsers_Get(t *testing.T) {
 }
 
 func TestUsers_GetMissing(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	defer uut.Close()
+	uut := newWaypoint(t, true)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users/"+uuid.New().String(), nil)
 	if err != nil {
@@ -174,11 +158,7 @@ func TestUsers_GetMissing(t *testing.T) {
 }
 
 func TestUsers_GetInvalidID(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	defer uut.Close()
+	uut := newWaypoint(t, true)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users/not-a-uuid", nil)
 	if err != nil {
@@ -204,11 +184,7 @@ func TestUsers_GetInvalidID(t *testing.T) {
 }
 
 func TestUsers_List(t *testing.T) {
-	uut, err := testlib.NewWaypoint()
-	if err != nil {
-		t.Fatalf("failed to run waypoint: %v", err)
-	}
-	defer uut.Close()
+	uut := newWaypoint(t, true)
 
 	assertUsers(t, uut, nil)
 	ada := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
@@ -216,14 +192,14 @@ func TestUsers_List(t *testing.T) {
 	assertUsers(t, uut, []httpapi.CreateUserResponse{ada, linkedAda})
 }
 
-func createTestUser(t *testing.T, uut *testlib.Waypoint, email, userName, displayName string) httpapi.CreateUserResponse {
+func createTestUser(t *testing.T, uut *testlib.TestWaypoint, email, userName, displayName string) httpapi.CreateUserResponse {
 	t.Helper()
 	body, err := json.Marshal(httpapi.CreateUserRequest{Email: email, UserName: userName, DisplayName: displayName})
 	if err != nil {
 		t.Fatalf("failed to encode user: %v", err)
 	}
 
-	token, err := uut.Keycloak().AccessToken(t.Context(), userName, "test-password")
+	token, err := keycloak(t).AccessToken(t.Context(), userName, "test-password")
 	if err != nil {
 		t.Fatalf("log into Keycloak: %v", err)
 	}
@@ -261,7 +237,7 @@ func createTestUser(t *testing.T, uut *testlib.Waypoint, email, userName, displa
 	return user
 }
 
-func assertUsers(t *testing.T, uut *testlib.Waypoint, want []httpapi.CreateUserResponse) {
+func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []httpapi.CreateUserResponse) {
 	t.Helper()
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users", nil)
 	if err != nil {

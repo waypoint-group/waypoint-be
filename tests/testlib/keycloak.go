@@ -33,7 +33,8 @@ type Keycloak struct {
 }
 
 func NewKeycloak() (*Keycloak, error) {
-	parent := context.Background()
+	parent, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
 	ctr, err := testcontainers.Run(
 		parent,
@@ -48,28 +49,30 @@ func NewKeycloak() (*Keycloak, error) {
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/realms/waypoint/.well-known/openid-configuration").
 				WithPort("8080/tcp").
-				WithStartupTimeout(time.Minute),
+				WithStartupTimeout(2*time.Minute),
 		),
 	)
 	kc := &Keycloak{ctr: ctr}
 	if err != nil {
-		kc.Close()
-		return nil, fmt.Errorf("failed to start Keycloak: %w", err)
+		return nil, errors.Join(fmt.Errorf("failed to start Keycloak: %w", err), kc.Close())
 	}
 
 	kc.URL, err = ctr.PortEndpoint(parent, "8080/tcp", "http")
 	if err != nil {
-		kc.Close()
-		return nil, fmt.Errorf("failed to get Keycloak URL: %w", err)
+		return nil, errors.Join(fmt.Errorf("failed to get Keycloak URL: %w", err), kc.Close())
 	}
 
 	issuerURL := kc.URL + "/realms/waypoint"
-	keysCtx, cancelKeys := context.WithCancel(parent)
+	keysCtx, cancelKeys := context.WithCancel(context.Background())
 	kc.cancelKeys = cancelKeys
+
+	// Enforce startup deadline.
+	stopCancelKeys := context.AfterFunc(parent, cancelKeys)
+	defer stopCancelKeys()
+
 	keys, err := keyfunc.NewDefaultCtx(keysCtx, []string{issuerURL + "/protocol/openid-connect/certs"})
 	if err != nil {
-		kc.Close()
-		return nil, fmt.Errorf("create Keycloak key resolver: %w", err)
+		return nil, errors.Join(fmt.Errorf("create Keycloak key resolver: %w", err), kc.Close())
 	}
 	kc.JWTConfig = middleware.JWTConfig{
 		Issuer:   issuerURL,
@@ -134,14 +137,17 @@ func (kc *Keycloak) AccessToken(
 	return result.AccessToken, nil
 }
 
-func (kc *Keycloak) Close() {
+func (kc *Keycloak) Close() error {
 	if kc.cancelKeys != nil {
 		kc.cancelKeys()
 	}
 	if kc.ctr == nil {
-		return
+		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	_ = kc.ctr.Terminate(ctx)
+	if err := kc.ctr.Terminate(ctx); err != nil {
+		return fmt.Errorf("terminate Keycloak container: %w", err)
+	}
+	return nil
 }
