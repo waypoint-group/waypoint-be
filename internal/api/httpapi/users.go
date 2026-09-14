@@ -135,7 +135,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		DisplayName: u.DisplayName,
 		CreatedAt:   u.CreatedAt,
 	}
-	if err := writeJSON(w, http.StatusCreated, response); err != nil {
+	if err := writeJSONResponse(w, http.StatusCreated, response); err != nil {
 		writeInternalServerError(w, err)
 	}
 }
@@ -167,7 +167,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt,
 	}
-	if err := writeJSON(w, http.StatusOK, response); err != nil {
+	if err := writeJSONResponse(w, http.StatusOK, response); err != nil {
 		writeInternalServerError(w, err)
 	}
 }
@@ -190,7 +190,7 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:   user.CreatedAt,
 		})
 	}
-	if err := writeJSON(w, http.StatusOK, response); err != nil {
+	if err := writeJSONResponse(w, http.StatusOK, response); err != nil {
 		writeInternalServerError(w, err)
 	}
 }
