@@ -78,7 +78,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request CreateUserRequest
-	if err := decodeJSON(w, r, &request); err != nil {
+	if err := decodeJSONRequest(w, r, &request); err != nil {
 		writeInvalidRequestBody(w, err)
 		return
 	}
