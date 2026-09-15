@@ -7,7 +7,6 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/golang-jwt/jwt/v5/request"
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/service"
 )
@@ -58,20 +57,7 @@ type ListUsersResponse struct {
 
 // CreateUser validates and creates a user from the request body.
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	// Forbid duplicate authorization headers.
-	headers := r.Header.Values("Authorization")
-	if len(headers) != 1 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	rawJWT, err := (request.BearerExtractor{}).ExtractToken(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	_, claims, err := middleware.ValidateJWT(rawJWT, h.jwtConfig)
+	_, claims, err := middleware.ExtractAndValidateJWT(r, h.jwtConfig)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

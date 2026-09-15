@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5/request"
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/service"
 )
@@ -26,20 +25,7 @@ type MeResponse struct {
 
 // Me writes the local user profile associated with the bearer token's identity.
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	// Forbid duplicate authorization headers.
-	headers := r.Header.Values("Authorization")
-	if len(headers) != 1 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	rawJWT, err := (request.BearerExtractor{}).ExtractToken(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	_, claims, err := middleware.ValidateJWT(rawJWT, h.jwtConfig)
+	_, claims, err := middleware.ExtractAndValidateJWT(r, h.jwtConfig)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
