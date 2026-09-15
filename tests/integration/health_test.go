@@ -8,7 +8,7 @@ import (
 )
 
 func TestHealth_HealthCheckOk(t *testing.T) {
-	uut := newWaypoint(t, false)
+	uut := newWaypoint(t)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/healthz", nil)
 	if err != nil {
@@ -22,7 +22,7 @@ func TestHealth_HealthCheckOk(t *testing.T) {
 }
 
 func TestHealth_ReadyCheckOk(t *testing.T) {
-	uut := newWaypoint(t, false)
+	uut := newWaypoint(t)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/readyz", nil)
 	if err != nil {

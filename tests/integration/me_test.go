@@ -13,7 +13,7 @@ import (
 )
 
 func TestMe(t *testing.T) {
-	uut := newWaypoint(t, true)
+	uut := newWaypoint(t)
 
 	created, err := uut.Services().Users.Create(t.Context(), "ada@example.com", "ada", "Ada Lovelace")
 	if err != nil {
@@ -33,12 +33,12 @@ func TestMe(t *testing.T) {
 		{"identity belongs to another issuer", "other-realm-only", true, true, http.StatusNotFound},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			token, err := keycloak(t).AccessToken(t.Context(), tc.username, "test-password")
+			token, err := testEnv.Keycloak().AccessToken(t.Context(), tc.username, "test-password")
 			if err != nil {
 				t.Fatalf("log into Keycloak: %v", err)
 			}
 
-			_, claims, err := middleware.ValidateJWT(token, keycloak(t).JWTConfig)
+			_, claims, err := middleware.ValidateJWT(token, testEnv.Keycloak().JWTConfig)
 			if err != nil {
 				t.Fatalf("verify Keycloak access token: %v", err)
 			}
@@ -109,7 +109,7 @@ func TestMe(t *testing.T) {
 	})
 
 	t.Run("incorrect password", func(t *testing.T) {
-		_, err := keycloak(t).AccessToken(t.Context(), "ada", "wrong-password")
+		_, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "wrong-password")
 		if err == nil {
 			t.Fatal("expected Keycloak to reject incorrect password")
 		}

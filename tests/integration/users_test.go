@@ -16,11 +16,11 @@ import (
 )
 
 func TestUsers_Create(t *testing.T) {
-	uut := newWaypoint(t, true)
+	uut := newWaypoint(t)
 
 	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	t.Run("duplicate email", func(t *testing.T) {
-		token, err := keycloak(t).AccessToken(t.Context(), "linked-ada", "test-password")
+		token, err := testEnv.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
 		if err != nil {
 			t.Fatalf("log into Keycloak: %v", err)
 		}
@@ -51,10 +51,10 @@ func TestUsers_Create(t *testing.T) {
 }
 
 func TestUsers_CreateDuplicateIdentity(t *testing.T) {
-	uut := newWaypoint(t, true)
+	uut := newWaypoint(t)
 
 	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
-	token, err := keycloak(t).AccessToken(t.Context(), "ada", "test-password")
+	token, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "test-password")
 	if err != nil {
 		t.Fatalf("log into Keycloak: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 }
 
 func TestUsers_Get(t *testing.T) {
-	uut := newWaypoint(t, true)
+	uut := newWaypoint(t)
 
 	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users/"+created.ID, nil)
@@ -140,7 +140,7 @@ func TestUsers_Get(t *testing.T) {
 }
 
 func TestUsers_GetMissing(t *testing.T) {
-	uut := newWaypoint(t, true)
+	uut := newWaypoint(t)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users/"+uuid.New().String(), nil)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestUsers_GetMissing(t *testing.T) {
 }
 
 func TestUsers_GetInvalidID(t *testing.T) {
-	uut := newWaypoint(t, true)
+	uut := newWaypoint(t)
 
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users/not-a-uuid", nil)
 	if err != nil {
@@ -184,7 +184,7 @@ func TestUsers_GetInvalidID(t *testing.T) {
 }
 
 func TestUsers_List(t *testing.T) {
-	uut := newWaypoint(t, true)
+	uut := newWaypoint(t)
 
 	assertUsers(t, uut, nil)
 	ada := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
@@ -199,7 +199,7 @@ func createTestUser(t *testing.T, uut *testlib.TestWaypoint, email, userName, di
 		t.Fatalf("failed to encode user: %v", err)
 	}
 
-	token, err := keycloak(t).AccessToken(t.Context(), userName, "test-password")
+	token, err := testEnv.Keycloak().AccessToken(t.Context(), userName, "test-password")
 	if err != nil {
 		t.Fatalf("log into Keycloak: %v", err)
 	}

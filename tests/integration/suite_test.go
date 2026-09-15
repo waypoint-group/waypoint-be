@@ -11,26 +11,34 @@ import (
 	"github.com/waypoint-group/waypoint-be/tests/testlib"
 )
 
-var environment testlib.TestEnvironment
+var testEnv *testlib.TestEnvironment
 
 func TestMain(m *testing.M) {
+	var err error
+	testEnv, err = testlib.NewEnvironment()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "create test environment: %v\n", err)
+		os.Exit(1)
+	}
+
 	code := m.Run()
-	if err := environment.Close(); err != nil {
+	if err := testEnv.Close(); err != nil {
 		fmt.Fprintf(os.Stderr, "close test environment: %v\n", err)
 		code = 1
 	}
 	os.Exit(code)
 }
 
-func newWaypoint(t *testing.T, authenticated bool) *testlib.TestWaypoint {
+func newWaypoint(t *testing.T) *testlib.TestWaypoint {
 	t.Helper()
 
-	cfg := waypoint.Config{}
-	if authenticated {
-		cfg.JWT = keycloak(t).JWTConfig
+	cfg := waypoint.Config{
+		JWT: testEnv.Keycloak().JWTConfig,
+		// Always migrate in tests.
+		Migrate: true,
 	}
 
-	w, err := environment.CreateWaypointInstance(&cfg)
+	w, err := testEnv.CreateWaypointInstance(&cfg)
 	if err != nil {
 		t.Fatalf("start Waypoint: %v", err)
 	}
@@ -42,13 +50,4 @@ func newWaypoint(t *testing.T, authenticated bool) *testlib.TestWaypoint {
 	})
 
 	return w
-}
-
-func keycloak(t *testing.T) *testlib.Keycloak {
-	t.Helper()
-	kc, err := environment.Keycloak()
-	if err != nil {
-		t.Fatalf("start Keycloak: %v", err)
-	}
-	return kc
 }

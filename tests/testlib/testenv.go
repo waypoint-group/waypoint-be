@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"time"
 
 	"github.com/waypoint-group/waypoint-be/internal/service"
@@ -20,45 +19,32 @@ import (
 // TestEnvironment owns shared containers. Close it after every instance has closed.
 // The zero value is ready to use; dependency startup failures are cached.
 type TestEnvironment struct {
-	mu              sync.Mutex
-	postgres        *Postgres
-	postgresStarted bool
-	postgresErr     error
-	keycloak        *Keycloak
-	keycloakStarted bool
-	keycloakErr     error
-	closed          bool
-	closeErr        error
+	postgres *Postgres
+	keycloak *Keycloak
 }
 
 func NewEnvironment() (*TestEnvironment, error) {
-	return &TestEnvironment{}, nil
+	e := &TestEnvironment{}
+	var err error
+
+	e.postgres, err = NewPostgres()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start postgres: %w", err)
+	}
+
+	e.keycloak, err = NewKeycloak()
+	if err != nil {
+		return nil, errors.Join(
+			fmt.Errorf("failed to start keycloak: %w", err),
+			e.Close(),
+		)
+	}
+
+	return e, nil
 }
 
-func (e *TestEnvironment) Postgres() (*Postgres, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.closed {
-		return nil, errors.New("test environment is closed")
-	}
-	if !e.postgresStarted {
-		e.postgresStarted = true
-		e.postgres, e.postgresErr = NewPostgres()
-	}
-	return e.postgres, e.postgresErr
-}
-
-func (e *TestEnvironment) Keycloak() (*Keycloak, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.closed {
-		return nil, errors.New("test environment is closed")
-	}
-	if !e.keycloakStarted {
-		e.keycloakStarted = true
-		e.keycloak, e.keycloakErr = NewKeycloak()
-	}
-	return e.keycloak, e.keycloakErr
+func (e *TestEnvironment) Keycloak() *Keycloak {
+	return e.keycloak
 }
 
 func (e *TestEnvironment) CreateWaypointInstance(cfg *waypoint.Config) (*TestWaypoint, error) {
@@ -66,14 +52,9 @@ func (e *TestEnvironment) CreateWaypointInstance(cfg *waypoint.Config) (*TestWay
 		return nil, errors.New("waypoint configuration is required")
 	}
 
-	pg, err := e.Postgres()
-	if err != nil {
-		return nil, err
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	database, err := pg.CreateDatabase(ctx)
+	database, err := e.postgres.CreateDatabase(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -91,20 +72,15 @@ func (e *TestEnvironment) CreateWaypointInstance(cfg *waypoint.Config) (*TestWay
 }
 
 func (e *TestEnvironment) Close() error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.closed {
-		return e.closeErr
-	}
-	e.closed = true
 	// Each container termination has its own 30-second deadline.
+	var closeErr error
 	if e.keycloak != nil {
-		e.closeErr = errors.Join(e.closeErr, e.keycloak.Close())
+		closeErr = errors.Join(closeErr, e.keycloak.Close())
 	}
 	if e.postgres != nil {
-		e.closeErr = errors.Join(e.closeErr, e.postgres.Close())
+		closeErr = errors.Join(closeErr, e.postgres.Close())
 	}
-	return e.closeErr
+	return closeErr
 }
 
 type TestWaypoint struct {
