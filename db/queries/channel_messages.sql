@@ -16,7 +16,7 @@ WHERE channel_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
--- name: ListChannelThreadMessages :many
+-- name: ListChannelThreadReplies :many
 SELECT *
 FROM channel_messages
 WHERE thread_root_id = $1

@@ -56,28 +56,30 @@ func (q *Queries) DeleteDirectMessage(ctx context.Context, id uuid.UUID) (int64,
 	return result.RowsAffected(), nil
 }
 
-const listDirectMessages = `-- name: ListDirectMessages :many
+const listDirectMessagesBetween = `-- name: ListDirectMessagesBetween :many
 SELECT id, author_id, recipient_id, body, created_at, updated_at
 FROM direct_messages
-WHERE LEAST(author_id, recipient_id) = LEAST($1, $2)
-  AND GREATEST(author_id, recipient_id) = GREATEST($1, $2)
+WHERE LEAST(author_id, recipient_id)
+        = LEAST($1, $2)
+    AND GREATEST(author_id, recipient_id)
+        = GREATEST($1, $2)
 ORDER BY created_at DESC
-LIMIT $3 OFFSET $4
+LIMIT $4 OFFSET $3
 `
 
-type ListDirectMessagesParams struct {
-	AuthorID   uuid.UUID
-	AuthorID_2 uuid.UUID
-	Limit      int32
-	Offset     int32
+type ListDirectMessagesBetweenParams struct {
+	UserA  uuid.UUID
+	UserB  uuid.UUID
+	Offset int32
+	Limit  int32
 }
 
-func (q *Queries) ListDirectMessages(ctx context.Context, arg ListDirectMessagesParams) ([]DirectMessage, error) {
-	rows, err := q.db.Query(ctx, listDirectMessages,
-		arg.AuthorID,
-		arg.AuthorID_2,
-		arg.Limit,
+func (q *Queries) ListDirectMessagesBetween(ctx context.Context, arg ListDirectMessagesBetweenParams) ([]DirectMessage, error) {
+	rows, err := q.db.Query(ctx, listDirectMessagesBetween,
+		arg.UserA,
+		arg.UserB,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

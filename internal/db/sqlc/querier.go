@@ -24,8 +24,8 @@ type Querier interface {
 	DeleteDirectMessage(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
 	ListChannelMessages(ctx context.Context, arg ListChannelMessagesParams) ([]ChannelMessage, error)
-	ListChannelThreadMessages(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error)
-	ListDirectMessages(ctx context.Context, arg ListDirectMessagesParams) ([]DirectMessage, error)
+	ListChannelThreadReplies(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error)
+	ListDirectMessagesBetween(ctx context.Context, arg ListDirectMessagesBetweenParams) ([]DirectMessage, error)
 	ListUserIdentities(ctx context.Context) ([]UserIdentity, error)
 	ListUserWorkspaces(ctx context.Context, userID uuid.UUID) ([]Workspace, error)
 	ListUsers(ctx context.Context) ([]User, error)
