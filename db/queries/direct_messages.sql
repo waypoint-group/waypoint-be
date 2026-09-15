@@ -8,13 +8,15 @@ SELECT *
 FROM direct_messages
 WHERE id = $1;
 
--- name: ListDirectMessages :many
+-- name: ListDirectMessagesBetween :many
 SELECT *
 FROM direct_messages
-WHERE LEAST(author_id, recipient_id) = LEAST($1, $2)
-  AND GREATEST(author_id, recipient_id) = GREATEST($1, $2)
+WHERE LEAST(author_id, recipient_id)
+        = LEAST(sqlc.arg('user_a'), sqlc.arg('user_b'))
+    AND GREATEST(author_id, recipient_id)
+        = GREATEST(sqlc.arg('user_a'), sqlc.arg('user_b'))
 ORDER BY created_at DESC
-LIMIT $3 OFFSET $4;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: UpdateDirectMessageBody :one
 UPDATE direct_messages

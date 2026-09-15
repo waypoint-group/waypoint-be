@@ -145,11 +145,11 @@ func (s *MessagingService) ReadDirectMessagePage(
 		return nil, InvalidInputError{What: "users must be different"}
 	}
 
-	messages, err := s.database.ListDirectMessages(ctx, sqlc.ListDirectMessagesParams{
-		AuthorID:   userA,
-		AuthorID_2: userB,
-		Limit:      int32(limit),
-		Offset:     int32(offset),
+	messages, err := s.database.ListDirectMessagesBetween(ctx, sqlc.ListDirectMessagesBetweenParams{
+		UserA:  userA,
+		UserB:  userB,
+		Limit:  int32(limit),
+		Offset: int32(offset),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("list direct messages: %w", err)
@@ -341,15 +341,14 @@ func (s *MessagingService) ReadChannelMessagePage(
 	return result, nil
 }
 
-// ReadChannelThreadMessages returns replies ordered by creation time.
-// It returns NotFoundError when the thread has no replies.
-func (s *MessagingService) ReadChannelThreadMessages(ctx context.Context, threadRootID uuid.UUID) ([]SentChannelMessage, error) {
-	messages, err := s.database.ListChannelThreadMessages(ctx, &threadRootID)
+// ReadChannelThreadReplies returns replies ordered by creation time.
+func (s *MessagingService) ReadChannelThreadReplies(ctx context.Context, threadRootID uuid.UUID) ([]SentChannelMessage, error) {
+	messages, err := s.database.ListChannelThreadReplies(ctx, &threadRootID)
 	if err != nil {
-		return nil, fmt.Errorf("read channel thread messages: %w", err)
+		return nil, fmt.Errorf("read channel thread replies: %w", err)
 	}
 	if len(messages) == 0 {
-		return nil, NotFoundError{What: "channel thread"}
+		return nil, NotFoundError{What: "channel thread replies"}
 	}
 
 	result := make([]SentChannelMessage, len(messages))
