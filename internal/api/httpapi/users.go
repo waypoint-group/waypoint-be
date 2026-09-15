@@ -3,12 +3,11 @@ package httpapi
 import (
 	"errors"
 	"net/http"
-	"strings"
 	"time"
 	"uuid"
 
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
-	"github.com/waypoint-group/waypoint-be/internal/service"
+	"github.com/waypoint-group/waypoint-be/internal/services"
 )
 
 // CreateUserRequest contains the fields accepted when creating a user.
@@ -69,49 +68,24 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	email := strings.TrimSpace(request.Email)
-	userName := strings.TrimSpace(request.UserName)
-	displayName := strings.TrimSpace(request.DisplayName)
-
-	if email == "" || userName == "" || displayName == "" {
-		writeInvalidRequestBody(w, errors.New("email, user name, and display name are required"))
-		return
-	}
-
-	user, err := service.InTx(
-		r.Context(),
-		h.database,
-		func(s *service.Services) (any, error) {
-			user, err := s.Users.Create(r.Context(), email, userName, displayName)
-			if err != nil {
-				return nil, err
-			}
-			_, err = s.UserIdentities.Create(
-				r.Context(),
-				user.ID,
-				claims.Subject,
-				claims.Issuer,
-			)
-			if err != nil {
-				return nil, err
-			}
-			return user, nil
-		},
-	)
+	u, err := h.services.Accounts.RegisterUser(r.Context(), services.RegisterUserInput{
+		Email:       request.Email,
+		UserName:    request.UserName,
+		DisplayName: request.DisplayName,
+		Identity:    services.ExternalIdentity{Issuer: claims.Issuer, Subject: claims.Subject},
+	})
 	if err != nil {
-		var alreadyExists service.AlreadyExistsError
-		if errors.As(err, &alreadyExists) {
+		var invalidInput services.InvalidInputError
+		var alreadyExists services.AlreadyExistsError
+		switch {
+		case errors.As(err, &invalidInput):
+			writeInvalidRequestBody(w, invalidInput)
+		case errors.As(err, &alreadyExists):
 			http.Error(w, alreadyExists.Error(), http.StatusConflict)
-			return
-		} else {
+		default:
 			writeInternalServerError(w, err)
-			return
 		}
-	}
-
-	u, ok := user.(*service.User)
-	if !ok {
-		panic(errors.New("unexpected type returned from transaction"))
+		return
 	}
 
 	response := CreateUserResponse{
@@ -134,9 +108,9 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.services.Users.Get(r.Context(), ID)
+	user, err := h.services.Accounts.ReadUser(r.Context(), ID)
 	if err != nil {
-		var notFound service.NotFoundError
+		var notFound services.NotFoundError
 		if errors.As(err, &notFound) {
 			http.Error(w, notFound.Error(), http.StatusNotFound)
 			return
@@ -158,9 +132,9 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ListUsers writes all users returned by the user service.
+// ListUsers writes all users returned by the accounts service.
 func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.services.Users.List(r.Context())
+	users, err := h.services.Accounts.ListUsers(r.Context())
 	if err != nil {
 		writeInternalServerError(w, err)
 		return

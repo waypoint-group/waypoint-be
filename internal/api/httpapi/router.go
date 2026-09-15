@@ -5,7 +5,7 @@ import (
 
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/db"
-	"github.com/waypoint-group/waypoint-be/internal/service"
+	"github.com/waypoint-group/waypoint-be/internal/services"
 )
 
 // Option configures an HTTP API handler.
@@ -13,13 +13,13 @@ type Option func(*Handler)
 
 // Handler serves the Waypoint HTTP API.
 type Handler struct {
-	services  *service.Services
+	services  *services.Services
 	database  *db.Database
 	jwtConfig middleware.JWTConfig
 }
 
 // New constructs an HTTP API handler backed by the supplied database and services.
-func New(database *db.Database, services *service.Services, options ...Option) *Handler {
+func New(database *db.Database, services *services.Services, options ...Option) *Handler {
 	handler := &Handler{
 		services: services,
 		database: database,
