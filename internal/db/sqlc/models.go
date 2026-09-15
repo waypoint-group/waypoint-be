@@ -51,11 +51,11 @@ type User struct {
 }
 
 type UserIdentity struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	AuthSubject string
-	AuthIssuer  string
-	CreatedAt   pgtype.Timestamptz
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Issuer    string
+	Subject   string
+	CreatedAt pgtype.Timestamptz
 }
 
 type Workspace struct {
