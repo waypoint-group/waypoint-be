@@ -29,5 +29,5 @@ CREATE INDEX direct_messages_conversation_created_idx
 ON direct_messages (
     LEAST(author_id, recipient_id),
     GREATEST(author_id, recipient_id),
-    id DESC
+    created_at DESC
 );
