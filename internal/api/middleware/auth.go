@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v5/request"
 )
 
 // JWTConfig contains the trusted issuer, audience, and key resolver for
@@ -57,6 +58,21 @@ func DiscoverOIDCProvider(issuer string) (*OIDCProvider, error) {
 	}
 
 	return &provider, nil
+}
+
+func ExtractAndValidateJWT(r *http.Request, jwtConfig JWTConfig) (*jwt.Token, *jwt.RegisteredClaims, error) {
+	// Forbid duplicate authorization headers.
+	headers := r.Header.Values("Authorization")
+	if len(headers) != 1 {
+		return nil, nil, fmt.Errorf("expected 1 Authorization header, got %d", len(headers))
+	}
+
+	raw, err := (request.BearerExtractor{}).ExtractToken(r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("extract bearer token: %w", err)
+	}
+
+	return ValidateJWT(raw, jwtConfig)
 }
 
 func ValidateJWT(raw string, jwtConfig JWTConfig) (*jwt.Token, *jwt.RegisteredClaims, error) {
