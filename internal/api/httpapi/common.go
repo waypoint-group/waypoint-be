@@ -18,14 +18,11 @@ func decodeJSONRequest(w http.ResponseWriter, r *http.Request, destination any) 
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(destination); err != nil {
-		return err
+		return fmt.Errorf("decode request body: %w", err)
 	}
 
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		if err == nil {
-			return errors.New("request body must contain a single JSON object")
-		}
-		return fmt.Errorf("decode trailing request data: %w", err)
+		return errors.New("request body must contain a single JSON object")
 	}
 
 	return nil
