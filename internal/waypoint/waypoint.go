@@ -10,7 +10,7 @@ import (
 	"github.com/waypoint-group/waypoint-be/db/migrations"
 	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
 	"github.com/waypoint-group/waypoint-be/internal/db"
-	"github.com/waypoint-group/waypoint-be/internal/service"
+	"github.com/waypoint-group/waypoint-be/internal/services"
 )
 
 // Waypoint application encapsulates the following:
@@ -21,7 +21,7 @@ type Waypoint struct {
 	// Database is the application's PostgreSQL database connection.
 	Database *db.Database
 	// Services contains the application's domain services.
-	Services *service.Services
+	Services *services.Services
 	// Handler serves the application's HTTP API.
 	Handler http.Handler
 }
@@ -42,7 +42,7 @@ func New(cfg *Config) (*Waypoint, error) {
 		return nil, fmt.Errorf("connect to database: %w", err)
 	}
 
-	services := service.New(database)
+	services := services.New(database)
 	httpHandler := httpapi.New(database, services, httpapi.WithJWTVerification(cfg.JWT))
 
 	return &Waypoint{

@@ -9,55 +9,29 @@ import (
 	"testing"
 
 	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
-	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
 )
 
 func TestMe(t *testing.T) {
 	uut := newWaypoint(t)
 
-	created, err := uut.Services().Users.Create(t.Context(), "ada@example.com", "ada", "Ada Lovelace")
-	if err != nil {
-		t.Fatalf("create user: %v", err)
-	}
+	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 
 	for _, tc := range []struct {
-		name        string
-		username    string
-		linked      bool
-		otherIssuer bool
-		status      int
+		name     string
+		username string
+		status   int
 	}{
-		{"valid", "ada", true, false, http.StatusOK},
-		{"linked account", "linked-ada", true, false, http.StatusOK},
-		{"unknown identity", "missing", false, false, http.StatusNotFound},
-		{"identity belongs to another issuer", "other-realm-only", true, true, http.StatusNotFound},
+		{"valid", "ada", http.StatusOK},
+		{"unknown identity", "missing", http.StatusNotFound},
+		// TODO: Linking accounts not implemented yet.
+		//
+		// {"linked account", "linked-ada", "requires an HTTP endpoint to link another identity to the registered user", http.StatusOK},
+		// {"identity belongs to another issuer", "other-realm-only", "requires HTTP setup for an identity linked under another issuer", http.StatusNotFound},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			token, err := testEnv.Keycloak().AccessToken(t.Context(), tc.username, "test-password")
 			if err != nil {
 				t.Fatalf("log into Keycloak: %v", err)
-			}
-
-			_, claims, err := middleware.ValidateJWT(token, testEnv.Keycloak().JWTConfig)
-			if err != nil {
-				t.Fatalf("verify Keycloak access token: %v", err)
-			}
-
-			if tc.linked {
-				issuer := claims.Issuer
-				if tc.otherIssuer {
-					issuer = "https://other.example.com"
-				}
-
-				_, err := uut.Services().UserIdentities.Create(
-					t.Context(),
-					created.ID,
-					claims.Subject,
-					issuer,
-				)
-				if err != nil {
-					t.Fatalf("create identity: %v", err)
-				}
 			}
 
 			response, err := uut.RequestWithAccessToken(t.Context(), http.MethodGet, "/me", nil, token)
@@ -80,7 +54,7 @@ func TestMe(t *testing.T) {
 					t.Fatalf("decode profile: %v", err)
 				}
 
-				same := me.ID == created.ID.String() &&
+				same := me.ID == created.ID &&
 					me.Email == created.Email &&
 					me.UserName == created.UserName &&
 					me.DisplayName == created.DisplayName &&
