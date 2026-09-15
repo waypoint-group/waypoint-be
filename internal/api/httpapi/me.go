@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
-	"github.com/waypoint-group/waypoint-be/internal/service"
+	"github.com/waypoint-group/waypoint-be/internal/services"
 )
 
 // MeResponse contains the authenticated user's profile.
@@ -31,13 +31,13 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.services.UserIdentities.GetUserByIdentity(
+	user, err := h.services.Accounts.ReadUserByIdentity(
 		r.Context(),
 		claims.Issuer,
 		claims.Subject,
 	)
 	if err != nil {
-		var notFound service.NotFoundError
+		var notFound services.NotFoundError
 		if errors.As(err, &notFound) {
 			http.Error(w, "Not Found", http.StatusNotFound)
 		} else {

@@ -50,6 +50,57 @@ func TestUsers_Create(t *testing.T) {
 	})
 }
 
+func TestUsers_CreateDuplicateUserName(t *testing.T) {
+	uut := newWaypoint(t)
+	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada")
+	token, err := testEnv.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
+	if err != nil {
+		t.Fatalf("log into Keycloak: %v", err)
+	}
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users",
+		strings.NewReader(`{"email":"linked-ada@example.com","user_name":"ada","display_name":"Another Ada"}`), token)
+	if err != nil {
+		t.Fatalf("register duplicate user name: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusConflict || strings.TrimSpace(string(body)) != "user_name already exists" {
+		t.Fatalf("expected user name conflict, got %d: %s", response.StatusCode, body)
+	}
+	assertUsers(t, uut, []httpapi.CreateUserResponse{created})
+	// A conflict must leave the second identity available for registration.
+	createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
+}
+
+func TestUsers_CreateDuplicateEmail(t *testing.T) {
+	uut := newWaypoint(t)
+	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada")
+	token, err := testEnv.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
+	if err != nil {
+		t.Fatalf("log into Keycloak: %v", err)
+	}
+
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users",
+		strings.NewReader(`{"email":"ada@example.com","user_name":"linked-ada","display_name":"Another Ada"}`), token)
+	if err != nil {
+		t.Fatalf("register duplicate email: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusConflict || strings.TrimSpace(string(body)) != "email already exists" {
+		t.Fatalf("expected email conflict, got %d: %s", response.StatusCode, body)
+	}
+	assertUsers(t, uut, []httpapi.CreateUserResponse{created})
+	// A conflict must leave the second identity available for registration.
+	createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
+}
+
 func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 	uut := newWaypoint(t)
 
@@ -270,4 +321,42 @@ func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []httpapi.CreateU
 			t.Errorf("expected user at index %d to be %+v, got %+v", i, want[i], user)
 		}
 	}
+}
+
+func TestUsers_CreateValidation(t *testing.T) {
+	uut := newWaypoint(t)
+	token, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "test-password")
+	if err != nil {
+		t.Fatalf("log into Keycloak: %v", err)
+	}
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{"missing email", `{"user_name":"ada","display_name":"Ada"}`},
+		{"blank email", `{"email":"  ","user_name":"ada","display_name":"Ada"}`},
+		{"blank user name", `{"email":"ada@example.com","user_name":"  ","display_name":"Ada"}`},
+		{"blank display name", `{"email":"ada@example.com","user_name":"ada","display_name":"  "}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users", strings.NewReader(tc.body), token)
+			if err != nil {
+				t.Fatalf("register invalid user: %v", err)
+			}
+			defer func() { _ = response.Body.Close() }()
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatalf("read response: %v", err)
+			}
+			if response.StatusCode != http.StatusBadRequest {
+				t.Fatalf("expected status 400, got %d: %s", response.StatusCode, body)
+			}
+			if got := strings.TrimSpace(string(body)); got != "invalid request body: email, user name, and display name are required" {
+				t.Errorf("unexpected validation error: %q", got)
+			}
+			assertUsers(t, uut, nil)
+		})
+	}
+	// Rejected input must not consume the external identity.
+	createTestUser(t, uut, "ada@example.com", "ada", "Ada")
 }
