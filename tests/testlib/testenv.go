@@ -17,7 +17,6 @@ import (
 )
 
 // TestEnvironment owns shared containers. Close it after every instance has closed.
-// The zero value is ready to use; dependency startup failures are cached.
 type TestEnvironment struct {
 	postgres *Postgres
 	keycloak *Keycloak
