@@ -32,10 +32,10 @@ type UserIdentity struct {
 	ID uuid.UUID
 	// UserID is the UUID of the local user who owns this identity.
 	UserID uuid.UUID
-	// AuthSubject identifies the external account within its issuer.
-	AuthSubject string
-	// AuthIssuer identifies the authority that issued the subject.
-	AuthIssuer string
+	// Issuer identifies the authority that issued the subject.
+	Issuer string
+	// Subject identifies the external account within its issuer.
+	Subject string
 	// CreatedAt is the time at which the identity was linked.
 	CreatedAt time.Time
 }
@@ -48,12 +48,12 @@ func NewUserIdentityService(store UserIdentityStore) *UserIdentityService {
 }
 
 // Create links an authentication identity to a local user.
-func (s *UserIdentityService) Create(ctx context.Context, userId uuid.UUID, authSubject string, authIssuer string) (*UserIdentity, error) {
+func (s *UserIdentityService) Create(ctx context.Context, userId uuid.UUID, subject string, issuer string) (*UserIdentity, error) {
 	user, err := s.store.CreateUserIdentity(ctx, sqlc.CreateUserIdentityParams{
-		ID:          uuid.NewV7(),
-		UserID:      userId,
-		AuthSubject: authSubject,
-		AuthIssuer:  authIssuer,
+		ID:      uuid.NewV7(),
+		UserID:  userId,
+		Issuer:  issuer,
+		Subject: subject,
 	})
 	if err != nil {
 		if db.IsUniqueViolation(err, "user_identities_identity_unique") {
@@ -63,11 +63,11 @@ func (s *UserIdentityService) Create(ctx context.Context, userId uuid.UUID, auth
 	}
 
 	return &UserIdentity{
-		ID:          user.ID,
-		UserID:      user.UserID,
-		AuthSubject: user.AuthSubject,
-		AuthIssuer:  user.AuthIssuer,
-		CreatedAt:   user.CreatedAt.Time,
+		ID:        user.ID,
+		UserID:    user.UserID,
+		Issuer:    user.Issuer,
+		Subject:   user.Subject,
+		CreatedAt: user.CreatedAt.Time,
 	}, nil
 }
 
@@ -85,11 +85,11 @@ func (s *UserIdentityService) Get(ctx context.Context, id uuid.UUID) (*UserIdent
 	}
 
 	return &UserIdentity{
-		ID:          userIdentity.ID,
-		UserID:      userIdentity.UserID,
-		AuthSubject: userIdentity.AuthSubject,
-		AuthIssuer:  userIdentity.AuthIssuer,
-		CreatedAt:   userIdentity.CreatedAt.Time,
+		ID:        userIdentity.ID,
+		UserID:    userIdentity.UserID,
+		Issuer:    userIdentity.Issuer,
+		Subject:   userIdentity.Subject,
+		CreatedAt: userIdentity.CreatedAt.Time,
 	}, nil
 }
 
@@ -103,11 +103,11 @@ func (s *UserIdentityService) List(ctx context.Context) ([]UserIdentity, error) 
 	result := make([]UserIdentity, 0, len(userIdentities))
 	for _, userIdentity := range userIdentities {
 		result = append(result, UserIdentity{
-			ID:          userIdentity.ID,
-			UserID:      userIdentity.UserID,
-			AuthSubject: userIdentity.AuthSubject,
-			AuthIssuer:  userIdentity.AuthIssuer,
-			CreatedAt:   userIdentity.CreatedAt.Time,
+			ID:        userIdentity.ID,
+			UserID:    userIdentity.UserID,
+			Issuer:    userIdentity.Issuer,
+			Subject:   userIdentity.Subject,
+			CreatedAt: userIdentity.CreatedAt.Time,
 		})
 	}
 
@@ -115,10 +115,10 @@ func (s *UserIdentityService) List(ctx context.Context) ([]UserIdentity, error) 
 }
 
 // GetUserByIdentity retrieves the local user matching both subject and issuer.
-func (s *UserIdentityService) GetUserByIdentity(ctx context.Context, authSubject string, authIssuer string) (*User, error) {
+func (s *UserIdentityService) GetUserByIdentity(ctx context.Context, issuer string, subject string) (*User, error) {
 	user, err := s.store.SelectUserByIdentity(ctx, sqlc.SelectUserByIdentityParams{
-		AuthSubject: authSubject,
-		AuthIssuer:  authIssuer,
+		Issuer:  issuer,
+		Subject: subject,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

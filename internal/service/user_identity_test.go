@@ -26,7 +26,7 @@ func (s *userIdentityStoreStub) CreateUserIdentity(_ context.Context, params sql
 		return sqlc.UserIdentity{}, s.err
 	}
 	identity := sqlc.UserIdentity{
-		ID: params.ID, UserID: params.UserID, AuthSubject: params.AuthSubject, AuthIssuer: params.AuthIssuer,
+		ID: params.ID, UserID: params.UserID, Issuer: params.Issuer, Subject: params.Subject,
 		CreatedAt: pgtype.Timestamptz{Time: time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC), Valid: true},
 	}
 	s.identities = append(s.identities, identity)
@@ -50,7 +50,7 @@ func (s *userIdentityStoreStub) SelectUserByIdentity(_ context.Context, params s
 		return sqlc.User{}, s.err
 	}
 	for _, identity := range s.identities {
-		if identity.AuthSubject == params.AuthSubject && identity.AuthIssuer == params.AuthIssuer {
+		if identity.Subject == params.Subject && identity.Issuer == params.Issuer {
 			for _, user := range s.users {
 				if user.ID == identity.UserID {
 					return user, nil
@@ -73,7 +73,7 @@ func TestUserIdentity_CreateAndSelect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateUserIdentity returned error: %v", err)
 	}
-	if created.ID == (uuid.UUID{}) || created.UserID != userID || created.AuthSubject != "subject" || created.AuthIssuer != "issuer" || !created.CreatedAt.Equal(store.identities[0].CreatedAt.Time) {
+	if created.ID == (uuid.UUID{}) || created.UserID != userID || created.Subject != "subject" || created.Issuer != "issuer" || !created.CreatedAt.Equal(store.identities[0].CreatedAt.Time) {
 		t.Fatalf("unexpected identity: %+v", created)
 	}
 	selected, err := uut.Get(t.Context(), created.ID)
@@ -116,21 +116,21 @@ func TestUserIdentity_GetUserByIdentity(t *testing.T) {
 	first := sqlc.User{ID: uuid.New(), Email: "ada@example.com", UserName: "ada", DisplayName: "Ada Lovelace", CreatedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true}}
 	second := sqlc.User{ID: uuid.New(), Email: "grace@example.com", UserName: "grace", DisplayName: "Grace Hopper", CreatedAt: first.CreatedAt}
 	store := &userIdentityStoreStub{users: []sqlc.User{first, second}, identities: []sqlc.UserIdentity{
-		{UserID: first.ID, AuthSubject: "shared-subject", AuthIssuer: "issuer-one"},
-		{UserID: second.ID, AuthSubject: "shared-subject", AuthIssuer: "issuer-two"},
-		{UserID: first.ID, AuthSubject: "linked-subject", AuthIssuer: "issuer-one"},
+		{UserID: first.ID, Issuer: "issuer-one", Subject: "shared-subject"},
+		{UserID: second.ID, Issuer: "issuer-two", Subject: "shared-subject"},
+		{UserID: first.ID, Issuer: "issuer-one", Subject: "linked-subject"},
 	}}
 	uut := service.NewUserIdentityService(store)
 	for _, tc := range []struct {
-		subject, issuer string
+		issuer, subject string
 		want            sqlc.User
 	}{
-		{"shared-subject", "issuer-one", first},
-		{"shared-subject", "issuer-two", second},
-		{"linked-subject", "issuer-one", first},
+		{"issuer-one", "shared-subject", first},
+		{"issuer-two", "shared-subject", second},
+		{"issuer-one", "linked-subject", first},
 	} {
-		t.Run(tc.subject+"/"+tc.issuer, func(t *testing.T) {
-			got, err := uut.GetUserByIdentity(t.Context(), tc.subject, tc.issuer)
+		t.Run(tc.issuer+"/"+tc.subject, func(t *testing.T) {
+			got, err := uut.GetUserByIdentity(t.Context(), tc.issuer, tc.subject)
 			if err != nil {
 				t.Fatalf("GetUserByIdentity returned error: %v", err)
 			}

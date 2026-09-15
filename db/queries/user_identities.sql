@@ -1,5 +1,5 @@
 -- name: CreateUserIdentity :one
-INSERT INTO user_identities (id, user_id, auth_subject, auth_issuer)
+INSERT INTO user_identities (id, user_id, issuer, subject)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
 

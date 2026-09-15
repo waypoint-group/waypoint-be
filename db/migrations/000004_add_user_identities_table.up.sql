@@ -1,10 +1,10 @@
 CREATE TABLE user_identities (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    auth_subject TEXT NOT NULL,
-    auth_issuer TEXT NOT NULL,
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT user_identities_identity_unique UNIQUE (auth_issuer, auth_subject)
+    CONSTRAINT user_identities_identity_unique UNIQUE (issuer, subject)
 );
 
 CREATE INDEX user_identities_user_id_idx
