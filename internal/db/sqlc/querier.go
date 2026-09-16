@@ -12,7 +12,7 @@ import (
 
 type Querier interface {
 	AddChannelMember(ctx context.Context, arg AddChannelMemberParams) error
-	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) error
+	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
 	CreateChannel(ctx context.Context, arg CreateChannelParams) (Channel, error)
 	CreateChannelMessage(ctx context.Context, arg CreateChannelMessageParams) (ChannelMessage, error)
 	CreateDirectMessage(ctx context.Context, arg CreateDirectMessageParams) (DirectMessage, error)

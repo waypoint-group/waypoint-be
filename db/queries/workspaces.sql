@@ -16,10 +16,10 @@ JOIN workspace_members
 WHERE workspace_members.user_id = $1
 ORDER BY workspaces.name;
 
--- name: AddWorkspaceMember :exec
+-- name: AddWorkspaceMember :one
 INSERT INTO workspace_members (workspace_id, user_id, role)
 VALUES ($1, $2, $3)
-ON CONFLICT DO NOTHING;
+RETURNING *;
 
 -- name: DeleteWorkspace :exec
 DELETE FROM workspaces

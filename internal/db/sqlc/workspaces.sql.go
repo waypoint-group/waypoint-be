@@ -11,10 +11,10 @@ import (
 	"uuid"
 )
 
-const addWorkspaceMember = `-- name: AddWorkspaceMember :exec
+const addWorkspaceMember = `-- name: AddWorkspaceMember :one
 INSERT INTO workspace_members (workspace_id, user_id, role)
 VALUES ($1, $2, $3)
-ON CONFLICT DO NOTHING
+RETURNING workspace_id, user_id, role, joined_at
 `
 
 type AddWorkspaceMemberParams struct {
@@ -23,9 +23,16 @@ type AddWorkspaceMemberParams struct {
 	Role        string
 }
 
-func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) error {
-	_, err := q.db.Exec(ctx, addWorkspaceMember, arg.WorkspaceID, arg.UserID, arg.Role)
-	return err
+func (q *Queries) AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error) {
+	row := q.db.QueryRow(ctx, addWorkspaceMember, arg.WorkspaceID, arg.UserID, arg.Role)
+	var i WorkspaceMember
+	err := row.Scan(
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.JoinedAt,
+	)
+	return i, err
 }
 
 const createWorkspace = `-- name: CreateWorkspace :one
