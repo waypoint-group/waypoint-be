@@ -97,16 +97,16 @@ const selectUserByIdentity = `-- name: SelectUserByIdentity :one
 SELECT u.id, u.email, u.user_name, u.display_name, u.created_at
 FROM users AS u
 JOIN user_identities AS i ON u.id = i.user_id
-WHERE i.auth_subject = $1 AND i.auth_issuer = $2
+WHERE i.issuer = $1 AND i.subject = $2
 `
 
 type SelectUserByIdentityParams struct {
-	AuthSubject string
-	AuthIssuer  string
+	Issuer  string
+	Subject string
 }
 
 func (q *Queries) SelectUserByIdentity(ctx context.Context, arg SelectUserByIdentityParams) (User, error) {
-	row := q.db.QueryRow(ctx, selectUserByIdentity, arg.AuthSubject, arg.AuthIssuer)
+	row := q.db.QueryRow(ctx, selectUserByIdentity, arg.Issuer, arg.Subject)
 	var i User
 	err := row.Scan(
 		&i.ID,

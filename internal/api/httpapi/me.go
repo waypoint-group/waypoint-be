@@ -47,8 +47,8 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.services.UserIdentities.GetUserByIdentity(
 		r.Context(),
-		claims.Subject,
 		claims.Issuer,
+		claims.Subject,
 	)
 	if err != nil {
 		var notFound service.NotFoundError

@@ -12,38 +12,38 @@ import (
 )
 
 const createUserIdentity = `-- name: CreateUserIdentity :one
-INSERT INTO user_identities (id, user_id, auth_subject, auth_issuer)
+INSERT INTO user_identities (id, user_id, issuer, subject)
 VALUES ($1, $2, $3, $4)
-RETURNING id, user_id, auth_subject, auth_issuer, created_at
+RETURNING id, user_id, issuer, subject, created_at
 `
 
 type CreateUserIdentityParams struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	AuthSubject string
-	AuthIssuer  string
+	ID      uuid.UUID
+	UserID  uuid.UUID
+	Issuer  string
+	Subject string
 }
 
 func (q *Queries) CreateUserIdentity(ctx context.Context, arg CreateUserIdentityParams) (UserIdentity, error) {
 	row := q.db.QueryRow(ctx, createUserIdentity,
 		arg.ID,
 		arg.UserID,
-		arg.AuthSubject,
-		arg.AuthIssuer,
+		arg.Issuer,
+		arg.Subject,
 	)
 	var i UserIdentity
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.AuthSubject,
-		&i.AuthIssuer,
+		&i.Issuer,
+		&i.Subject,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const listUserIdentities = `-- name: ListUserIdentities :many
-SELECT id, user_id, auth_subject, auth_issuer, created_at
+SELECT id, user_id, issuer, subject, created_at
 FROM user_identities
 `
 
@@ -59,8 +59,8 @@ func (q *Queries) ListUserIdentities(ctx context.Context) ([]UserIdentity, error
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
-			&i.AuthSubject,
-			&i.AuthIssuer,
+			&i.Issuer,
+			&i.Subject,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -74,7 +74,7 @@ func (q *Queries) ListUserIdentities(ctx context.Context) ([]UserIdentity, error
 }
 
 const selectUserIdentity = `-- name: SelectUserIdentity :one
-SELECT id, user_id, auth_subject, auth_issuer, created_at
+SELECT id, user_id, issuer, subject, created_at
 FROM user_identities
 WHERE id = $1
 `
@@ -85,15 +85,15 @@ func (q *Queries) SelectUserIdentity(ctx context.Context, id uuid.UUID) (UserIde
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.AuthSubject,
-		&i.AuthIssuer,
+		&i.Issuer,
+		&i.Subject,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const selectUserIdentityByUserID = `-- name: SelectUserIdentityByUserID :one
-SELECT id, user_id, auth_subject, auth_issuer, created_at
+SELECT id, user_id, issuer, subject, created_at
 FROM user_identities
 WHERE user_id = $1
 `
@@ -104,8 +104,8 @@ func (q *Queries) SelectUserIdentityByUserID(ctx context.Context, userID uuid.UU
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.AuthSubject,
-		&i.AuthIssuer,
+		&i.Issuer,
+		&i.Subject,
 		&i.CreatedAt,
 	)
 	return i, err

@@ -12,7 +12,7 @@ WHERE id = $1;
 SELECT u.*
 FROM users AS u
 JOIN user_identities AS i ON u.id = i.user_id
-WHERE i.auth_subject = $1 AND i.auth_issuer = $2;
+WHERE i.issuer = $1 AND i.subject = $2;
 
 -- name: ListUsers :many
 SELECT *
