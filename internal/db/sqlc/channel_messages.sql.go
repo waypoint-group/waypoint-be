@@ -104,15 +104,15 @@ func (q *Queries) ListChannelMessages(ctx context.Context, arg ListChannelMessag
 	return items, nil
 }
 
-const listChannelThreadMessages = `-- name: ListChannelThreadMessages :many
+const listChannelThreadReplies = `-- name: ListChannelThreadReplies :many
 SELECT id, author_id, channel_id, created_at, updated_at, body, thread_root_id, reply_count
 FROM channel_messages
 WHERE thread_root_id = $1
 ORDER BY created_at
 `
 
-func (q *Queries) ListChannelThreadMessages(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error) {
-	rows, err := q.db.Query(ctx, listChannelThreadMessages, threadRootID)
+func (q *Queries) ListChannelThreadReplies(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error) {
+	rows, err := q.db.Query(ctx, listChannelThreadReplies, threadRootID)
 	if err != nil {
 		return nil, err
 	}

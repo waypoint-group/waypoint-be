@@ -25,9 +25,9 @@ CREATE TABLE direct_messages (
 
 -- Useful for quick direct message retrieval between users
 -- in chronological order.
-CREATE INDEX direct_messages_conversation_idx
+CREATE INDEX direct_messages_conversation_created_idx
 ON direct_messages (
     LEAST(author_id, recipient_id),
     GREATEST(author_id, recipient_id),
-    id DESC
+    created_at DESC
 );
