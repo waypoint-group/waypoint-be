@@ -1,4 +1,4 @@
-DROP INDEX direct_messages_conversation_idx;
+DROP INDEX direct_messages_conversation_created_idx;
 DROP TABLE direct_messages;
 
 ALTER TABLE channel_messages
