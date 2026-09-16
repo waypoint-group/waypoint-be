@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/waypoint-group/waypoint-be/internal/service"
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 )
 
@@ -86,10 +85,6 @@ type TestWaypoint struct {
 	database  *TestDatabase
 	waypoint  *waypoint.Waypoint
 	apiServer *httptest.Server
-}
-
-func (w *TestWaypoint) Services() *service.Services {
-	return w.waypoint.Services
 }
 
 func (w *TestWaypoint) Client() *http.Client {
