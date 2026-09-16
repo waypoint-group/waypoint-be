@@ -17,7 +17,7 @@ import (
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
+	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
 //go:embed testdata/waypoint-realm.json

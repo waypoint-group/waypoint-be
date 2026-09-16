@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
+	userapi "github.com/waypoint-group/waypoint-be/internal/user"
 )
 
 func TestMe(t *testing.T) {
@@ -49,7 +49,7 @@ func TestMe(t *testing.T) {
 			}
 
 			if tc.status == http.StatusOK {
-				var me httpapi.MeResponse
+				var me userapi.MeResponse
 				if err := json.NewDecoder(response.Body).Decode(&me); err != nil {
 					t.Fatalf("decode profile: %v", err)
 				}

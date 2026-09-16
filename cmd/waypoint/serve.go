@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
-	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
+	"github.com/waypoint-group/waypoint-be/internal/middleware"
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 )
 
