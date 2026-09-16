@@ -1,7 +1,7 @@
 package waypoint
 
 import (
-	"github.com/waypoint-group/waypoint-be/internal/api/middleware"
+	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
 // Config contains the configuration used to construct a Waypoint application.

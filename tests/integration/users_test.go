@@ -11,7 +11,7 @@ import (
 	"testing"
 	"uuid"
 
-	"github.com/waypoint-group/waypoint-be/internal/api/httpapi"
+	userapi "github.com/waypoint-group/waypoint-be/internal/user"
 	"github.com/waypoint-group/waypoint-be/tests/testlib"
 )
 
@@ -43,10 +43,10 @@ func TestUsers_Create(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read conflict response: %v", err)
 		}
-		if got := strings.TrimSpace(string(body)); got != "email already exists" {
+		if got := strings.TrimSpace(string(body)); got != "email already in use" {
 			t.Errorf("expected email conflict, got %q", got)
 		}
-		assertUsers(t, uut, []httpapi.CreateUserResponse{created})
+		assertUsers(t, uut, []userapi.CreateUserResponse{created})
 	})
 }
 
@@ -67,10 +67,10 @@ func TestUsers_CreateDuplicateUserName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	if response.StatusCode != http.StatusConflict || strings.TrimSpace(string(body)) != "user_name already exists" {
+	if response.StatusCode != http.StatusConflict || strings.TrimSpace(string(body)) != "user name already in use" {
 		t.Fatalf("expected user name conflict, got %d: %s", response.StatusCode, body)
 	}
-	assertUsers(t, uut, []httpapi.CreateUserResponse{created})
+	assertUsers(t, uut, []userapi.CreateUserResponse{created})
 	// A conflict must leave the second identity available for registration.
 	createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
 }
@@ -93,10 +93,10 @@ func TestUsers_CreateDuplicateEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read response: %v", err)
 	}
-	if response.StatusCode != http.StatusConflict || strings.TrimSpace(string(body)) != "email already exists" {
+	if response.StatusCode != http.StatusConflict || strings.TrimSpace(string(body)) != "email already in use" {
 		t.Fatalf("expected email conflict, got %d: %s", response.StatusCode, body)
 	}
-	assertUsers(t, uut, []httpapi.CreateUserResponse{created})
+	assertUsers(t, uut, []userapi.CreateUserResponse{created})
 	// A conflict must leave the second identity available for registration.
 	createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
 }
@@ -128,11 +128,11 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read conflict response: %v", err)
 	}
-	if got := strings.TrimSpace(string(body)); got != "user identity already exists" {
+	if got := strings.TrimSpace(string(body)); got != "user identity already in use" {
 		t.Errorf("expected identity conflict, got %q", got)
 	}
 	// The failed registration must roll back the second profile.
-	assertUsers(t, uut, []httpapi.CreateUserResponse{created})
+	assertUsers(t, uut, []userapi.CreateUserResponse{created})
 
 	meResponse, err := uut.RequestWithAccessToken(t.Context(), http.MethodGet, "/me", nil, token)
 	if err != nil {
@@ -148,7 +148,7 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", meResponse.StatusCode)
 	}
 
-	var profile httpapi.MeResponse
+	var profile userapi.MeResponse
 	if err := json.NewDecoder(meResponse.Body).Decode(&profile); err != nil {
 		t.Fatalf("decode profile: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestUsers_Get(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", response.StatusCode)
 	}
 
-	var get httpapi.GetUserResponse
+	var get userapi.GetUserResponse
 	if err := json.NewDecoder(response.Body).Decode(&get); err != nil {
 		t.Fatalf("failed to decode user: %v", err)
 	}
@@ -240,12 +240,12 @@ func TestUsers_List(t *testing.T) {
 	assertUsers(t, uut, nil)
 	ada := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	linkedAda := createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Ada Lovelace")
-	assertUsers(t, uut, []httpapi.CreateUserResponse{ada, linkedAda})
+	assertUsers(t, uut, []userapi.CreateUserResponse{ada, linkedAda})
 }
 
-func createTestUser(t *testing.T, uut *testlib.TestWaypoint, email, userName, displayName string) httpapi.CreateUserResponse {
+func createTestUser(t *testing.T, uut *testlib.TestWaypoint, email, userName, displayName string) userapi.CreateUserResponse {
 	t.Helper()
-	body, err := json.Marshal(httpapi.CreateUserRequest{Email: email, UserName: userName, DisplayName: displayName})
+	body, err := json.Marshal(userapi.CreateUserRequest{Email: email, UserName: userName, DisplayName: displayName})
 	if err != nil {
 		t.Fatalf("failed to encode user: %v", err)
 	}
@@ -272,7 +272,7 @@ func createTestUser(t *testing.T, uut *testlib.TestWaypoint, email, userName, di
 	if got := response.Header.Get("Content-Type"); got != "application/json" {
 		t.Errorf("expected JSON content type, got %q", got)
 	}
-	var user httpapi.CreateUserResponse
+	var user userapi.CreateUserResponse
 	if err := json.NewDecoder(response.Body).Decode(&user); err != nil {
 		t.Fatalf("failed to decode created user: %v", err)
 	}
@@ -288,7 +288,7 @@ func createTestUser(t *testing.T, uut *testlib.TestWaypoint, email, userName, di
 	return user
 }
 
-func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []httpapi.CreateUserResponse) {
+func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []userapi.CreateUserResponse) {
 	t.Helper()
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users", nil)
 	if err != nil {
@@ -304,7 +304,7 @@ func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []httpapi.CreateU
 		t.Fatalf("expected status 200, got %d", response.StatusCode)
 	}
 
-	var list httpapi.ListUsersResponse
+	var list userapi.ListUsersResponse
 	if err := json.NewDecoder(response.Body).Decode(&list); err != nil {
 		t.Fatalf("failed to decode users: %v", err)
 	}
@@ -332,11 +332,12 @@ func TestUsers_CreateValidation(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		body string
+		want string
 	}{
-		{"missing email", `{"user_name":"ada","display_name":"Ada"}`},
-		{"blank email", `{"email":"  ","user_name":"ada","display_name":"Ada"}`},
-		{"blank user name", `{"email":"ada@example.com","user_name":"  ","display_name":"Ada"}`},
-		{"blank display name", `{"email":"ada@example.com","user_name":"ada","display_name":"  "}`},
+		{"missing email", `{"user_name":"ada","display_name":"Ada"}`, "invalid request body: invalid email"},
+		{"blank email", `{"email":"  ","user_name":"ada","display_name":"Ada"}`, "invalid request body: invalid email"},
+		{"blank user name", `{"email":"ada@example.com","user_name":"  ","display_name":"Ada"}`, "invalid request body: invalid user name"},
+		{"blank display name", `{"email":"ada@example.com","user_name":"ada","display_name":"  "}`, "invalid request body: invalid display name"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users", strings.NewReader(tc.body), token)
@@ -351,7 +352,7 @@ func TestUsers_CreateValidation(t *testing.T) {
 			if response.StatusCode != http.StatusBadRequest {
 				t.Fatalf("expected status 400, got %d: %s", response.StatusCode, body)
 			}
-			if got := strings.TrimSpace(string(body)); got != "invalid request body: email, user name, and display name are required" {
+			if got := strings.TrimSpace(string(body)); got != tc.want {
 				t.Errorf("unexpected validation error: %q", got)
 			}
 			assertUsers(t, uut, nil)
