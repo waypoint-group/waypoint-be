@@ -12,6 +12,7 @@ import (
 // newRouter returns the HTTP handler containing all Waypoint API routes.
 func newRouter(database *db.Database, jwtConfig middleware.JWTConfig) http.Handler {
 	mux := http.NewServeMux()
+	const maxRequestBodyBytes = 1 << 20
 
 	// Health
 	healthH := health.NewHandler(database)
@@ -20,7 +21,8 @@ func newRouter(database *db.Database, jwtConfig middleware.JWTConfig) http.Handl
 
 	// Users
 	userH := user.NewHandler(user.NewService(database), jwtConfig)
-	mux.HandleFunc("POST /users", userH.CreateUser)
+	mux.Handle("POST /users", http.MaxBytesHandler(http.HandlerFunc(userH.CreateUser), maxRequestBodyBytes))
+	// TODO: ListUsers should be admin only.
 	mux.HandleFunc("GET /users", userH.ListUsers)
 	mux.HandleFunc("GET /users/{id}", userH.GetUser)
 	mux.HandleFunc("GET /me", userH.Me)
