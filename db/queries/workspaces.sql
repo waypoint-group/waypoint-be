@@ -14,7 +14,7 @@ FROM workspaces
 JOIN workspace_members
     ON workspace_members.workspace_id = workspaces.id
 WHERE workspace_members.user_id = $1
-ORDER BY workspaces.name;
+ORDER BY workspaces.name, workspaces.id;
 
 -- name: AddWorkspaceMember :one
 INSERT INTO workspace_members (workspace_id, user_id, role)
