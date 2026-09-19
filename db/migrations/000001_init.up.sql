@@ -25,15 +25,27 @@ CREATE TABLE channels (
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT channels_workspace_name_unique UNIQUE (workspace_id, name)
+    CONSTRAINT channels_workspace_name_unique UNIQUE (workspace_id, name),
+    CONSTRAINT channels_workspace_id_id_unique UNIQUE (workspace_id, id)
 );
 
 CREATE TABLE channel_members (
-    channel_id UUID NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    workspace_id UUID NOT NULL,
+    channel_id UUID NOT NULL,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (channel_id, user_id)
+    PRIMARY KEY (channel_id, user_id),
+    CONSTRAINT channel_members_workspace_channel_fkey
+        FOREIGN KEY (workspace_id, channel_id)
+        REFERENCES channels (workspace_id, id) ON DELETE CASCADE,
+    CONSTRAINT channel_members_workspace_member_fkey
+        FOREIGN KEY (workspace_id, user_id)
+        REFERENCES workspace_members (workspace_id, user_id) ON DELETE CASCADE
 );
+
+-- Support cascading removal of a user's memberships within one workspace.
+CREATE INDEX channel_members_workspace_user_idx
+    ON channel_members (workspace_id, user_id);
 
 CREATE TABLE messages (
     id UUID PRIMARY KEY,

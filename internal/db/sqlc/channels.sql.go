@@ -12,18 +12,19 @@ import (
 )
 
 const addChannelMember = `-- name: AddChannelMember :exec
-INSERT INTO channel_members (channel_id, user_id)
-VALUES ($1, $2)
+INSERT INTO channel_members (workspace_id, channel_id, user_id)
+VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING
 `
 
 type AddChannelMemberParams struct {
-	ChannelID uuid.UUID
-	UserID    uuid.UUID
+	WorkspaceID uuid.UUID
+	ChannelID   uuid.UUID
+	UserID      uuid.UUID
 }
 
 func (q *Queries) AddChannelMember(ctx context.Context, arg AddChannelMemberParams) error {
-	_, err := q.db.Exec(ctx, addChannelMember, arg.ChannelID, arg.UserID)
+	_, err := q.db.Exec(ctx, addChannelMember, arg.WorkspaceID, arg.ChannelID, arg.UserID)
 	return err
 }
 
