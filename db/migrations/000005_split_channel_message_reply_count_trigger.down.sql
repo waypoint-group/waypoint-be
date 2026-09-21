@@ -1,7 +1,8 @@
-ALTER TABLE channel_messages
-    ADD COLUMN reply_count BIGINT NOT NULL DEFAULT 0 CHECK (reply_count >= 0);
+DROP TRIGGER channel_message_reply_count_insert ON channel_messages;
+DROP TRIGGER channel_message_reply_count_delete ON channel_messages;
+DROP FUNCTION increment_channel_message_reply_count();
+DROP FUNCTION decrement_channel_message_reply_count();
 
--- Update counts atomically in the same transaction as the reply change.
 CREATE FUNCTION update_channel_message_reply_count() RETURNS TRIGGER
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -22,7 +23,5 @@ END;
 $$;
 
 CREATE TRIGGER channel_message_reply_count
--- UPDATE tag is ignored because that would indicate moving a reply 
--- from one root to another, which is not supported.
 AFTER INSERT OR DELETE ON channel_messages
 FOR EACH ROW EXECUTE FUNCTION update_channel_message_reply_count();
