@@ -5,6 +5,12 @@ import (
 	"uuid"
 )
 
+// UserProfile contains a registered user and their workspace memberships.
+type UserProfile struct {
+	User                 User
+	WorkspaceMemberships []WorkspaceMembership
+}
+
 // User represents a successfully created user.
 type User struct {
 	// ID is the unique identifier of the created user.
@@ -17,6 +23,12 @@ type User struct {
 	DisplayName string
 	// CreatedAt is the timestamp when the user account was created.
 	CreatedAt time.Time
+}
+
+// WorkspaceMembership identifies a workspace the user belongs to.
+type WorkspaceMembership struct {
+	WorkspaceID   uuid.UUID
+	WorkspaceName string
 }
 
 // CreateUserInput contains input for user creation.
@@ -85,6 +97,12 @@ type ListUsersResponse struct {
 
 // MeResponse contains the authenticated user's profile.
 type MeResponse struct {
+	User                 MeUser                  `json:"user"`
+	WorkspaceMemberships []MeWorkspaceMembership `json:"workspace_memberships"`
+}
+
+// MeUser is the user portion of the authenticated profile response.
+type MeUser struct {
 	// ID is the user's UUID in its canonical string form.
 	ID string `json:"id"`
 	// Email is the user's email address.
@@ -95,4 +113,10 @@ type MeResponse struct {
 	DisplayName string `json:"display_name"`
 	// CreatedAt is the time at which the user was created.
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// MeWorkspaceMembership identifies a workspace in the authenticated profile response.
+type MeWorkspaceMembership struct {
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
 }

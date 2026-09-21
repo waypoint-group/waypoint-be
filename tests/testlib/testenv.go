@@ -60,7 +60,6 @@ func (e *TestEnvironment) CreateWaypointInstance(cfg *waypoint.Config) (*TestWay
 	w := &TestWaypoint{database: database}
 	instanceCfg := *cfg
 	instanceCfg.DatabaseURL = database.URL
-	instanceCfg.Migrate = true
 	w.waypoint, err = waypoint.New(&instanceCfg)
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("failed to run Waypoint: %w", err), w.Close())

@@ -119,7 +119,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.ReadUserByIdentity(
+	profile, err := h.service.ReadUserProfile(
 		r.Context(),
 		claims.Issuer,
 		claims.Subject,
@@ -133,15 +133,26 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user := MeUser{
+		ID:          profile.User.ID.String(),
+		Email:       profile.User.Email,
+		UserName:    profile.User.UserName,
+		DisplayName: profile.User.DisplayName,
+		CreatedAt:   profile.User.CreatedAt,
+	}
+	workspaceMemberships := make([]MeWorkspaceMembership, 0, len(profile.WorkspaceMemberships))
+	for _, wsMembership := range profile.WorkspaceMemberships {
+		workspaceMemberships = append(workspaceMemberships, MeWorkspaceMembership{
+			WorkspaceID:   wsMembership.WorkspaceID.String(),
+			WorkspaceName: wsMembership.WorkspaceName,
+		})
+	}
 	err = httpx.WriteJSON(
 		w,
 		http.StatusOK,
 		MeResponse{
-			ID:          user.ID.String(),
-			Email:       user.Email,
-			UserName:    user.UserName,
-			DisplayName: user.DisplayName,
-			CreatedAt:   user.CreatedAt,
+			User:                 user,
+			WorkspaceMemberships: workspaceMemberships,
 		},
 	)
 	if err != nil {
@@ -157,10 +168,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status, public = http.StatusNotFound, err.Error()
 	case errors.Is(err, ErrEmailTaken), errors.Is(err, ErrUserNameTaken), errors.Is(err, ErrIdentityTaken):
 		status, public = http.StatusConflict, err.Error()
-	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity):
+	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity), errors.Is(err, ErrInvalidId):
 		status, public = http.StatusBadRequest, "invalid request body: "+err.Error()
-	case errors.Is(err, ErrInvalidId):
-		status, public = http.StatusBadRequest, err.Error()
 	}
 	if status == http.StatusInternalServerError {
 		log.Printf("user error: %v", err)
