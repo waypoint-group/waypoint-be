@@ -106,7 +106,30 @@ func (s *Service) ReadUser(ctx context.Context, id uuid.UUID) (*User, error) {
 	return &result, nil
 }
 
-// ReadUserByIdentity retrieves a registered user matching both issuer and subject.
+// ReadUserProfile retrieves a registered user profile matching both the identity
+// issuer and subject.
+func (s *Service) ReadUserProfile(ctx context.Context, issuer, subject string) (*UserProfile, error) {
+	user, err := s.ReadUserByIdentity(ctx, issuer, subject)
+	if err != nil {
+		return nil, err
+	}
+
+	userWorkspaces, err := s.database.ListUserWorkspaces(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list user workspaces: %w", err)
+	}
+
+	workspaceMemberships := make([]WorkspaceMembership, 0, len(userWorkspaces))
+	for _, ws := range userWorkspaces {
+		workspaceMemberships = append(workspaceMemberships, WorkspaceMembership{WorkspaceID: ws.ID, WorkspaceName: ws.Name})
+	}
+	return &UserProfile{
+		User:                 *user,
+		WorkspaceMemberships: workspaceMemberships,
+	}, nil
+}
+
+// ReadUserByIdentity resolves the local user matching both the token issuer and subject.
 func (s *Service) ReadUserByIdentity(ctx context.Context, issuer, subject string) (*User, error) {
 	user, err := s.database.SelectUserByIdentity(ctx, sqlc.SelectUserByIdentityParams{Issuer: issuer, Subject: subject})
 	if err != nil {
@@ -115,6 +138,7 @@ func (s *Service) ReadUserByIdentity(ctx context.Context, issuer, subject string
 		}
 		return nil, fmt.Errorf("read user by identity: %w", err)
 	}
+
 	result := userFromRow(user)
 	return &result, nil
 }

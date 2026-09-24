@@ -12,7 +12,7 @@ import (
 
 type Querier interface {
 	AddChannelMember(ctx context.Context, arg AddChannelMemberParams) error
-	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) error
+	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
 	CreateChannel(ctx context.Context, arg CreateChannelParams) (Channel, error)
 	CreateChannelMessage(ctx context.Context, arg CreateChannelMessageParams) (ChannelMessage, error)
 	CreateDirectMessage(ctx context.Context, arg CreateDirectMessageParams) (DirectMessage, error)
@@ -22,6 +22,8 @@ type Querier interface {
 	DeleteChannel(ctx context.Context, id uuid.UUID) error
 	DeleteChannelMessage(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDirectMessage(ctx context.Context, id uuid.UUID) (int64, error)
+	// Run after LockEmptyWorkspaces, in a separate statement to recheck membership.
+	DeleteEmptyWorkspaces(ctx context.Context, workspaceIds []uuid.UUID) (int64, error)
 	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
 	ListChannelMessages(ctx context.Context, arg ListChannelMessagesParams) ([]ChannelMessage, error)
 	ListChannelThreadReplies(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error)
@@ -30,6 +32,13 @@ type Querier interface {
 	ListUserWorkspaces(ctx context.Context, userID uuid.UUID) ([]Workspace, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListWorkspaceChannels(ctx context.Context, workspaceID uuid.UUID) ([]Channel, error)
+	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceMember, error)
+	// Lock a bounded batch without waiting for active workspace operations or other cleaners.
+	LockEmptyWorkspaces(ctx context.Context) ([]uuid.UUID, error)
+	// Serialize workspace operations through their shared parent row.
+	// The lock lasts until the surrounding transaction commits or rolls back.
+	LockWorkspaceRow(ctx context.Context, id uuid.UUID) (Workspace, error)
+	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error
 	SelectChannel(ctx context.Context, id uuid.UUID) (Channel, error)
 	SelectChannelMessage(ctx context.Context, id uuid.UUID) (ChannelMessage, error)
 	SelectDirectMessage(ctx context.Context, id uuid.UUID) (DirectMessage, error)
@@ -38,6 +47,7 @@ type Querier interface {
 	SelectUserIdentity(ctx context.Context, id uuid.UUID) (UserIdentity, error)
 	SelectUserIdentityByUserID(ctx context.Context, userID uuid.UUID) (UserIdentity, error)
 	SelectWorkspace(ctx context.Context, id uuid.UUID) (Workspace, error)
+	SelectWorkspaceMember(ctx context.Context, arg SelectWorkspaceMemberParams) (WorkspaceMember, error)
 	UpdateChannelMessageBody(ctx context.Context, arg UpdateChannelMessageBodyParams) (ChannelMessage, error)
 	UpdateDirectMessageBody(ctx context.Context, arg UpdateDirectMessageBodyParams) (DirectMessage, error)
 }

@@ -15,8 +15,8 @@ WHERE workspace_id = $1
 ORDER BY name;
 
 -- name: AddChannelMember :exec
-INSERT INTO channel_members (channel_id, user_id)
-VALUES ($1, $2)
+INSERT INTO channel_members (workspace_id, channel_id, user_id)
+VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING;
 
 -- name: DeleteChannel :exec

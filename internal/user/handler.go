@@ -1,14 +1,11 @@
 package user
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"uuid"
 
+	"github.com/waypoint-group/waypoint-be/internal/httpx"
 	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
@@ -32,8 +29,8 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request CreateUserRequest
-	if err := decodeJSONRequest(w, r, &request); err != nil {
-		invalidRequestBody(w, err)
+	if err := httpx.ReadJSON(r, &request); err != nil {
+		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -44,19 +41,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Identity:    ExternalIdentity{Issuer: claims.Issuer, Subject: claims.Subject},
 	})
 	if err != nil {
-		switch {
-		case errors.Is(err, ErrEmailTaken):
-			http.Error(w, ErrEmailTaken.Error(), http.StatusConflict)
-		case errors.Is(err, ErrUserNameTaken):
-			http.Error(w, ErrUserNameTaken.Error(), http.StatusConflict)
-		case errors.Is(err, ErrIdentityTaken):
-			http.Error(w, ErrIdentityTaken.Error(), http.StatusConflict)
-		case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName),
-			errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity):
-			invalidRequestBody(w, err)
-		default:
-			internalServerError(w, err)
-		}
+		writeError(w, err)
 		return
 	}
 
@@ -67,14 +52,14 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		DisplayName: u.DisplayName,
 		CreatedAt:   u.CreatedAt,
 	}
-	if err := writeJSONResponse(w, http.StatusCreated, response); err != nil {
-		internalServerError(w, err)
+	if err := httpx.WriteJSON(w, http.StatusCreated, response); err != nil {
+		writeError(w, err)
 	}
 }
 
 // GetUser retrieves the user identified by the request path.
 func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
-	ID, err := uuid.Parse(r.PathValue("id"))
+	ID, err := httpx.PathID(r, "id")
 	if err != nil {
 		http.Error(w, ErrInvalidId.Error(), http.StatusBadRequest)
 		return
@@ -87,7 +72,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		internalServerError(w, err)
+		writeError(w, err)
 		return
 	}
 
@@ -98,8 +83,8 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 		DisplayName: user.DisplayName,
 		CreatedAt:   user.CreatedAt,
 	}
-	if err := writeJSONResponse(w, http.StatusOK, response); err != nil {
-		internalServerError(w, err)
+	if err := httpx.WriteJSON(w, http.StatusOK, response); err != nil {
+		writeError(w, err)
 	}
 }
 
@@ -107,7 +92,7 @@ func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.service.ListUsers(r.Context())
 	if err != nil {
-		internalServerError(w, err)
+		writeError(w, err)
 		return
 	}
 
@@ -121,8 +106,8 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:   user.CreatedAt,
 		})
 	}
-	if err := writeJSONResponse(w, http.StatusOK, response); err != nil {
-		internalServerError(w, err)
+	if err := httpx.WriteJSON(w, http.StatusOK, response); err != nil {
+		writeError(w, err)
 	}
 }
 
@@ -134,7 +119,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.ReadUserByIdentity(
+	profile, err := h.service.ReadUserProfile(
 		r.Context(),
 		claims.Issuer,
 		claims.Subject,
@@ -143,62 +128,51 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, ErrNotFound) {
 			http.Error(w, ErrNotFound.Error(), http.StatusNotFound)
 		} else {
-			internalServerError(w, err)
+			writeError(w, err)
 		}
 		return
 	}
 
-	err = writeJSONResponse(
+	user := MeUser{
+		ID:          profile.User.ID.String(),
+		Email:       profile.User.Email,
+		UserName:    profile.User.UserName,
+		DisplayName: profile.User.DisplayName,
+		CreatedAt:   profile.User.CreatedAt,
+	}
+	workspaceMemberships := make([]MeWorkspaceMembership, 0, len(profile.WorkspaceMemberships))
+	for _, wsMembership := range profile.WorkspaceMemberships {
+		workspaceMemberships = append(workspaceMemberships, MeWorkspaceMembership{
+			WorkspaceID:   wsMembership.WorkspaceID.String(),
+			WorkspaceName: wsMembership.WorkspaceName,
+		})
+	}
+	err = httpx.WriteJSON(
 		w,
 		http.StatusOK,
 		MeResponse{
-			ID:          user.ID.String(),
-			Email:       user.Email,
-			UserName:    user.UserName,
-			DisplayName: user.DisplayName,
-			CreatedAt:   user.CreatedAt,
+			User:                 user,
+			WorkspaceMemberships: workspaceMemberships,
 		},
 	)
 	if err != nil {
-		internalServerError(w, err)
+		writeError(w, err)
 	}
 }
 
-const maxRequestBodyBytes = 1 << 20
-
-func decodeJSONRequest(w http.ResponseWriter, r *http.Request, destination any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(destination); err != nil {
-		return fmt.Errorf("decode request body: %w", err)
+// writeError maps domain sentinels to HTTP statuses and hides unexpected causes.
+func writeError(w http.ResponseWriter, err error) {
+	status, public := http.StatusInternalServerError, "internal server error"
+	switch {
+	case errors.Is(err, ErrNotFound):
+		status, public = http.StatusNotFound, err.Error()
+	case errors.Is(err, ErrEmailTaken), errors.Is(err, ErrUserNameTaken), errors.Is(err, ErrIdentityTaken):
+		status, public = http.StatusConflict, err.Error()
+	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity), errors.Is(err, ErrInvalidId):
+		status, public = http.StatusBadRequest, "invalid request body: "+err.Error()
 	}
-
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return errors.New("request body must contain a single JSON object")
+	if status == http.StatusInternalServerError {
+		log.Printf("user error: %v", err)
 	}
-
-	return nil
-}
-
-func writeJSONResponse(w http.ResponseWriter, status int, value any) error {
-	payload, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, err = w.Write(payload)
-	return err
-}
-
-func internalServerError(w http.ResponseWriter, err error) {
-	log.Printf("internal server error: %v", err)
-	http.Error(w, "internal server error", http.StatusInternalServerError)
-}
-
-func invalidRequestBody(w http.ResponseWriter, err error) {
-	http.Error(w, fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
+	http.Error(w, public, status)
 }

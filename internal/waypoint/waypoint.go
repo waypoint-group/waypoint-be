@@ -18,6 +18,7 @@ import (
 type Waypoint struct {
 	// Database is the application's PostgreSQL database connection.
 	Database *db.Database
+	Services *Services
 	// Handler serves the application's HTTP API.
 	Handler http.Handler
 }
@@ -38,12 +39,16 @@ func New(cfg *Config) (*Waypoint, error) {
 		return nil, fmt.Errorf("connect to database: %w", err)
 	}
 
+	services := newServices(database, cfg)
+	router := newRouter(database, services, cfg)
 	return &Waypoint{
 		Database: database,
-		Handler:  newRouter(database, cfg.JWT),
+		Services: services,
+		Handler:  router,
 	}, nil
 }
 
 func (w *Waypoint) Close() {
+	w.Services.Close()
 	w.Database.Close()
 }

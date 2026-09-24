@@ -17,9 +17,10 @@ type Channel struct {
 }
 
 type ChannelMember struct {
-	ChannelID uuid.UUID
-	UserID    uuid.UUID
-	JoinedAt  pgtype.Timestamptz
+	WorkspaceID uuid.UUID
+	ChannelID   uuid.UUID
+	UserID      uuid.UUID
+	JoinedAt    pgtype.Timestamptz
 }
 
 type ChannelMessage struct {

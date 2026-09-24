@@ -1,0 +1,1 @@
+DROP INDEX workspace_members_single_owner_idx;

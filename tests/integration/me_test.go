@@ -54,11 +54,11 @@ func TestMe(t *testing.T) {
 					t.Fatalf("decode profile: %v", err)
 				}
 
-				same := me.ID == created.ID &&
-					me.Email == created.Email &&
-					me.UserName == created.UserName &&
-					me.DisplayName == created.DisplayName &&
-					me.CreatedAt.Equal(created.CreatedAt)
+				same := me.User.ID == created.ID &&
+					me.User.Email == created.Email &&
+					me.User.UserName == created.UserName &&
+					me.User.DisplayName == created.DisplayName &&
+					me.User.CreatedAt.Equal(created.CreatedAt)
 				if !same {
 					t.Errorf("expected profile %+v, got %+v", created, me)
 				}
