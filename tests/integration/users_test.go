@@ -18,51 +18,22 @@ import (
 func TestUsers_Create(t *testing.T) {
 	uut := newWaypoint(t)
 
-	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
-	t.Run("duplicate email", func(t *testing.T) {
-		token, err := testEnv.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
-		if err != nil {
-			t.Fatalf("log into Keycloak: %v", err)
-		}
-
-		response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users",
-			strings.NewReader(`{"email":"ada@example.com","user_name":"another-user","display_name":"Another User"}`), token)
-		if err != nil {
-			t.Fatalf("register duplicate email: %v", err)
-		}
-		defer func() { _ = response.Body.Close() }()
-
-		if response.StatusCode != http.StatusConflict {
-			body, err := io.ReadAll(response.Body)
-			if err == nil {
-				t.Logf("response body: %s", string(body))
-			}
-			t.Fatalf("expected status 409, got %d", response.StatusCode)
-		}
-
-		body, err := io.ReadAll(response.Body)
-		if err != nil {
-			t.Fatalf("read conflict response: %v", err)
-		}
-		if got := strings.TrimSpace(string(body)); got != "email already in use" {
-			t.Errorf("expected email conflict, got %q", got)
-		}
-
-		assertUsers(t, uut, []userapi.CreateUserResponse{created})
-	})
+	created := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	// Make sure new user's info can be queried through the API.
+	assertUsers(t, uut, []userapi.CreateUserResponse{created})
 }
 
 func TestUsers_CreateDuplicateUserName(t *testing.T) {
 	uut := newWaypoint(t)
 
-	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada")
+	created := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
 	token, err := testEnv.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
 	if err != nil {
 		t.Fatalf("log into Keycloak: %v", err)
 	}
 
 	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users",
-		strings.NewReader(`{"email":"linked-ada@example.com","user_name":"ada","display_name":"Another Ada"}`), token)
+		strings.NewReader(`{"user_name":"ada","display_name":"Another Ada"}`), token)
 	if err != nil {
 		t.Fatalf("register duplicate user name: %v", err)
 	}
@@ -80,51 +51,20 @@ func TestUsers_CreateDuplicateUserName(t *testing.T) {
 	assertUsers(t, uut, []userapi.CreateUserResponse{created})
 
 	// A conflict must leave the second identity available for registration.
-	createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
-}
-
-func TestUsers_CreateDuplicateEmail(t *testing.T) {
-	uut := newWaypoint(t)
-
-	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada")
-	token, err := testEnv.Keycloak().AccessToken(t.Context(), "linked-ada", "test-password")
-	if err != nil {
-		t.Fatalf("log into Keycloak: %v", err)
-	}
-
-	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users",
-		strings.NewReader(`{"email":"ada@example.com","user_name":"linked-ada","display_name":"Another Ada"}`), token)
-	if err != nil {
-		t.Fatalf("register duplicate email: %v", err)
-	}
-	defer func() { _ = response.Body.Close() }()
-
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		t.Fatalf("read response: %v", err)
-	}
-
-	if response.StatusCode != http.StatusConflict || strings.TrimSpace(string(body)) != "email already in use" {
-		t.Fatalf("expected email conflict, got %d: %s", response.StatusCode, body)
-	}
-
-	assertUsers(t, uut, []userapi.CreateUserResponse{created})
-
-	// A conflict must leave the second identity available for registration.
-	createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
+	createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
 }
 
 func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 	uut := newWaypoint(t)
 
-	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	created := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	token, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "test-password")
 	if err != nil {
 		t.Fatalf("log into Keycloak: %v", err)
 	}
 
 	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users",
-		strings.NewReader(`{"email":"another@example.com","user_name":"another-profile","display_name":"Another Profile"}`), token)
+		strings.NewReader(`{"user_name":"another-profile","display_name":"Another Profile"}`), token)
 	if err != nil {
 		t.Fatalf("repeat registration: %v", err)
 	}
@@ -142,8 +82,8 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read conflict response: %v", err)
 	}
-	if got := strings.TrimSpace(string(body)); got != "user identity already in use" {
-		t.Errorf("expected identity conflict, got %q", got)
+	if got := strings.TrimSpace(string(body)); got != "email already in use" {
+		t.Errorf("expected email conflict, got %q", got)
 	}
 
 	// The failed registration must roll back the second profile.
@@ -176,7 +116,7 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 func TestUsers_Get(t *testing.T) {
 	uut := newWaypoint(t)
 
-	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	created := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users/"+created.ID, nil)
 	if err != nil {
 		t.Fatalf("failed to get user: %v", err)
@@ -254,14 +194,20 @@ func TestUsers_List(t *testing.T) {
 	uut := newWaypoint(t)
 
 	assertUsers(t, uut, nil)
-	ada := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
-	linkedAda := createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Ada Lovelace")
+	ada := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	linkedAda := createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Ada Lovelace")
 	assertUsers(t, uut, []userapi.CreateUserResponse{ada, linkedAda})
 }
 
-func createTestUser(t *testing.T, uut *testlib.TestWaypoint, email, userName, displayName string) userapi.CreateUserResponse {
+func createTestUserChecked(
+	t *testing.T,
+	uut *testlib.TestWaypoint,
+	email,
+	userName,
+	displayName string,
+) userapi.CreateUserResponse {
 	t.Helper()
-	body, err := json.Marshal(userapi.CreateUserRequest{Email: email, UserName: userName, DisplayName: displayName})
+	body, err := json.Marshal(userapi.CreateUserRequest{UserName: userName, DisplayName: displayName})
 	if err != nil {
 		t.Fatalf("failed to encode user: %v", err)
 	}
@@ -355,10 +301,8 @@ func TestUsers_CreateValidation(t *testing.T) {
 		body string
 		want string
 	}{
-		{"missing email", `{"user_name":"ada","display_name":"Ada"}`, "invalid request body: invalid email"},
-		{"blank email", `{"email":"  ","user_name":"ada","display_name":"Ada"}`, "invalid request body: invalid email"},
-		{"blank user name", `{"email":"ada@example.com","user_name":"  ","display_name":"Ada"}`, "invalid request body: invalid user name"},
-		{"blank display name", `{"email":"ada@example.com","user_name":"ada","display_name":"  "}`, "invalid request body: invalid display name"},
+		{"blank user name", `{"user_name":"  ","display_name":"Ada"}`, "invalid request body: invalid user name"},
+		{"blank display name", `{"user_name":"ada","display_name":"  "}`, "invalid request body: invalid display name"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users", strings.NewReader(tc.body), token)
@@ -381,7 +325,4 @@ func TestUsers_CreateValidation(t *testing.T) {
 			assertUsers(t, uut, nil)
 		})
 	}
-
-	// Rejected input must not consume the external identity.
-	createTestUser(t, uut, "ada@example.com", "ada", "Ada")
 }
