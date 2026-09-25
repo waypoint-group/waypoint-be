@@ -10,10 +10,10 @@ import (
 	"github.com/golang-jwt/jwt/v5/request"
 )
 
-// JWTClaims contains the registered access token claims and the user's email.
+// JWTClaims contains the registered access token claims, as well as the email claim.
 type JWTClaims struct {
 	jwt.RegisteredClaims
-	// Email is supplied by the issuer and may be absent from the token.
+	// Email is supplied by the issuer.
 	Email string `json:"email"`
 }
 
