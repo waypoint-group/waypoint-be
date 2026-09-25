@@ -57,14 +57,16 @@ curl --fail-with-body http://localhost:8081/realms/waypoint/protocol/openid-conn
   --data-urlencode 'password=YOUR_PASSWORD'
 ```
 
-Copy the response's `access_token` into `TOKEN`, then create your Waypoint profile:
+Copy the response's `access_token` into `TOKEN`, then create your Waypoint profile.
+The API reads your email from the access token's `email` claim, so the request
+body only includes your user name and display name.
 
 ```sh
 TOKEN='PASTE_ACCESS_TOKEN_HERE'
 curl --fail-with-body http://localhost:8080/users \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com", "user_name": "some-guy", "display_name":"xXSomeGuyXx"}'
+  -d '{"user_name":"some-guy", "display_name":"xXSomeGuyXx"}'
 curl --fail-with-body http://localhost:8080/me -H "Authorization: Bearer $TOKEN"
 ```
 

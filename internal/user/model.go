@@ -53,8 +53,6 @@ type ExternalIdentity struct {
 
 // CreateUserRequest contains the fields accepted when creating a user.
 type CreateUserRequest struct {
-	// Email is the user's email address.
-	Email string `json:"email"`
 	// UserName is the user's handle.
 	UserName string `json:"user_name"`
 	// DisplayName is the name shown for the user.
