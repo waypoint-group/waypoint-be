@@ -35,7 +35,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u, err := h.service.CreateUser(r.Context(), CreateUserInput{
-		Email:       request.Email,
+		Email:       claims.Email,
 		UserName:    request.UserName,
 		DisplayName: request.DisplayName,
 		Identity:    ExternalIdentity{Issuer: claims.Issuer, Subject: claims.Subject},

@@ -27,8 +27,8 @@ import (
 func TestWorkspaces_Lifecycle(t *testing.T) {
 	uut := newWaypoint(t)
 
-	owner := createTestUser(t, uut, "ada@example.com", "ada", "Ada")
-	member := createTestUser(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
+	owner := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
+	member := createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
 	ownerToken, memberToken := workspaceToken(t, "ada"), workspaceToken(t, "linked-ada")
 	assertWorkspaceMemberships(t, uut, ownerToken)
 
@@ -87,7 +87,7 @@ func TestWorkspaces_Lifecycle(t *testing.T) {
 func TestWorkspaces_ValidationAndAuthentication(t *testing.T) {
 	uut := newWaypoint(t)
 
-	owner := createTestUser(t, uut, "ada@example.com", "ada", "Ada")
+	owner := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
 	token := workspaceToken(t, "ada")
 	created := createTestWorkspace(t, uut, token, "Engineering")
 

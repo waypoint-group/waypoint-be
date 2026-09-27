@@ -10,6 +10,13 @@ import (
 	"github.com/golang-jwt/jwt/v5/request"
 )
 
+// JWTClaims contains the registered access token claims, as well as the email claim.
+type JWTClaims struct {
+	jwt.RegisteredClaims
+	// Email is supplied by the issuer.
+	Email string `json:"email"`
+}
+
 // JWTConfig contains the trusted issuer, audience, and key resolver for
 // access tokens. KeyFunc must return trusted RSA public keys; it must not
 // trust keys supplied by the token.
@@ -22,6 +29,7 @@ type JWTConfig struct {
 	KeyFunc jwt.Keyfunc
 }
 
+// OIDCProvider contains the issuer and endpoints read from OIDC discovery.
 type OIDCProvider struct {
 	Issuer                string `json:"issuer"`
 	AuthorizationEndpoint string `json:"authorization_endpoint"`
@@ -60,7 +68,9 @@ func DiscoverOIDCProvider(issuer string) (*OIDCProvider, error) {
 	return &provider, nil
 }
 
-func ExtractAndValidateJWT(r *http.Request, jwtConfig JWTConfig) (*jwt.Token, *jwt.RegisteredClaims, error) {
+// ExtractAndValidateJWT extracts a bearer token from the request's single
+// Authorization header and validates it with ValidateJWT.
+func ExtractAndValidateJWT(r *http.Request, jwtConfig JWTConfig) (*jwt.Token, *JWTClaims, error) {
 	// Forbid duplicate authorization headers.
 	headers := r.Header.Values("Authorization")
 	if len(headers) != 1 {
@@ -75,8 +85,12 @@ func ExtractAndValidateJWT(r *http.Request, jwtConfig JWTConfig) (*jwt.Token, *j
 	return ValidateJWT(raw, jwtConfig)
 }
 
-func ValidateJWT(raw string, jwtConfig JWTConfig) (*jwt.Token, *jwt.RegisteredClaims, error) {
-	claims := &jwt.RegisteredClaims{}
+// ValidateJWT verifies an RS256 access token's signature, issuer, audience,
+// expiration, and optional not-before claim. It requires an expiration and a
+// nonempty subject but does not validate the email claim. The returned claims
+// are also stored in token.Claims.
+func ValidateJWT(raw string, jwtConfig JWTConfig) (*jwt.Token, *JWTClaims, error) {
+	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(
 		raw,
 		claims,

@@ -14,7 +14,7 @@ import (
 func TestMe(t *testing.T) {
 	uut := newWaypoint(t)
 
-	created := createTestUser(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	created := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 
 	for _, tc := range []struct {
 		name     string
