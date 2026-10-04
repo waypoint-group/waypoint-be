@@ -13,17 +13,17 @@ For a running local stack and manual token workflow, see [local setup](local-set
 
 Run these from the repository root:
 
-| Command | Purpose |
-| --- | --- |
+| Command                        | Purpose                                                              |
+| ------------------------------ | -------------------------------------------------------------------- |
 | `just run serve --migrate ...` | Run the API through the CLI; pass server and JWT flags after `serve` |
-| `just run migrate` | Apply pending migrations |
-| `just build` | Build `./build/waypoint` |
-| `just test-unit` | Run all packages without the integration build tag |
-| `just test` | Run with `-tags integration`; requires Docker |
-| `just vet` | Run `go vet ./...` |
-| `just fmt` | Run `go fmt .` |
-| `just lint` | Run golangci-lint (optional tool) |
-| `just check` | Run format, vet, and integration tests |
+| `just run migrate`             | Apply pending migrations                                             |
+| `just build`                   | Build `./build/waypoint`                                             |
+| `just test-unit`               | Run all packages without the integration build tag                   |
+| `just test`                    | Run with `-tags integration`; requires Docker                        |
+| `just vet`                     | Run `go vet ./...`                                                   |
+| `just fmt`                     | Run `go fmt .`                                                       |
+| `just lint`                    | Run golangci-lint (optional tool)                                    |
+| `just check`                   | Run format, vet, and integration tests                               |
 
 `just run` forwards arguments to `go run ./cmd/waypoint`. Direct equivalents are available in `justfile`. To inspect flags, use `go run ./cmd/waypoint --help` or `go run ./cmd/waypoint serve --help`.
 
