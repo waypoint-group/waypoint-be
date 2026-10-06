@@ -7,7 +7,7 @@
 - `just` for the repository shortcuts.
 - `sqlc` to regenerate database access code after editing query or schema source. `golangci-lint` is needed only for `just lint`.
 
-For a running local stack and manual token workflow, see [local setup](local-setup.md).
+For a running local stack and manual token workflow, see [local setup](local-setup.md). For frontend client configuration and social-login callbacks, see [frontend authentication](../frontend/auth.md).
 
 ## Common commands
 
@@ -31,7 +31,7 @@ Run these from the repository root:
 
 Unit tests live beside the packages they exercise. Integration tests are under `tests/integration` and have the `integration` build tag. Their `TestMain` starts one PostgreSQL and one Keycloak container; each Waypoint fixture gets its own database in the shared PostgreSQL container. Docker must be running and able to pull the images.
 
-Run one integration test with, for example, `go test -tags integration ./tests/integration -run TestHealth` (replace the test name with one present in the package). Tests use a separate test realm in `tests/testlib/testdata/waypoint-realm.json`; local Compose realm settings are defined inline in `docker-compose.yaml`.
+Run one integration test with, for example, `go test -tags integration ./tests/integration -run TestHealth` (replace the test name with one present in the package). Tests use a separate test realm in `tests/testlib/testdata/waypoint-realm.json`; local Compose realm settings are imported from [waypoint-dev-realm.json](../../tests/testlib/testdata/waypoint-dev-realm.json).
 
 ## Change workflow
 
