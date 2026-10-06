@@ -29,6 +29,11 @@ services:
       # This administrator belongs to the master realm, not the waypoint realm.
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-secret}
+      KEYCLOAK_FE_CLIENT_SECRET: ${KEYCLOAK_FE_CLIENT_SECRET:?Set KEYCLOAK_FE_CLIENT_SECRET in .env or the environment}
+      KEYCLOAK_GOOGLE_CLIENT_ID: ${KEYCLOAK_GOOGLE_CLIENT_ID:?Set KEYCLOAK_GOOGLE_CLIENT_ID in .env or the environment}
+      KEYCLOAK_GOOGLE_CLIENT_SECRET: ${KEYCLOAK_GOOGLE_CLIENT_SECRET:?Set KEYCLOAK_GOOGLE_CLIENT_SECRET in .env or the environment}
+      KEYCLOAK_GITHUB_CLIENT_ID: ${KEYCLOAK_GITHUB_CLIENT_ID:?Set KEYCLOAK_GITHUB_CLIENT_ID in .env or the environment}
+      KEYCLOAK_GITHUB_CLIENT_SECRET: ${KEYCLOAK_GITHUB_CLIENT_SECRET:?Set KEYCLOAK_GITHUB_CLIENT_SECRET in .env or the environment}
     ports:
       - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
     volumes:
@@ -36,7 +41,7 @@ services:
     configs:
       - source: keycloak-realm
         target: /opt/keycloak/data/import/waypoint-realm.json
-        mode: 0644
+        mode: 0644 # -rw-r--r--
     healthcheck:
       test:
         - CMD
@@ -74,10 +79,10 @@ services:
         target: /config/pgpass
         uid: "5050"
         gid: "5050"
-        mode: 0400
+        mode: 0400 # -r--------
       - source: pgadmin-servers
         target: /pgadmin4/servers.json
-        mode: 0444
+        mode: 0444 # -r--r--r--
 
 volumes:
   postgres_data:
@@ -87,36 +92,10 @@ volumes:
 configs:
   # Imported only when the realm does not exist. Later changes can be made in
   # the Keycloak admin console; restarting preserves existing users and settings.
+  # Built-in scope definitions were exported from Keycloak 26.7.3. Supplying
+  # clientScopes replaces automatic default creation, so retain them here.
   keycloak-realm:
-    content: |
-      {
-        "realm": "waypoint",
-        "enabled": true,
-        "sslRequired": "none",
-        "registrationAllowed": true,
-        "clients": [
-          {
-            "clientId": "waypoint-manual",
-            "protocol": "openid-connect",
-            "enabled": true,
-            "publicClient": true,
-            "standardFlowEnabled": false,
-            "directAccessGrantsEnabled": true,
-            "protocolMappers": [
-              {
-                "name": "waypoint-api-audience",
-                "protocol": "openid-connect",
-                "protocolMapper": "oidc-audience-mapper",
-                "config": {
-                  "included.custom.audience": "waypoint-api",
-                  "access.token.claim": "true",
-                  "id.token.claim": "false"
-                }
-              }
-            ]
-          }
-        ]
-      }
+    file: ./tests/testlib/testdata/waypoint-dev-realm.json
   pgadmin-servers:
     content: |
       {
