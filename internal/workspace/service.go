@@ -47,7 +47,7 @@ func (s *Service) Close() {
 func (s *Service) CreateWorkspace(
 	ctx context.Context,
 	input CreateWorkspaceInput,
-) (_ *Workspace, resultErr error) {
+) (_ *Workspace, createWorkspaceError error) {
 	name := strings.TrimSpace(input.Name)
 	if name == "" {
 		return nil, ErrInvalidName
@@ -62,7 +62,7 @@ func (s *Service) CreateWorkspace(
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			createWorkspaceError = errors.Join(createWorkspaceError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 
@@ -98,7 +98,7 @@ func (s *Service) CreateWorkspace(
 func (s *Service) ReadWorkspace(
 	ctx context.Context,
 	input ReadWorkspaceInput,
-) (_ *Workspace, resultErr error) {
+) (_ *Workspace, readWorkspaceError error) {
 	if input.WorkspaceID == (uuid.UUID{}) || input.ActorID == (uuid.UUID{}) {
 		return nil, ErrInvalidID
 	}
@@ -109,7 +109,7 @@ func (s *Service) ReadWorkspace(
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			readWorkspaceError = errors.Join(readWorkspaceError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 
@@ -150,7 +150,7 @@ func (s *Service) ReadWorkspace(
 func (s *Service) AddWorkspaceMember(
 	ctx context.Context,
 	input AddWorkspaceMemberInput,
-) (_ *WorkspaceMember, resultErr error) {
+) (_ *WorkspaceMember, addWorkspaceMemberError error) {
 	if input.WorkspaceID == (uuid.UUID{}) ||
 		input.ActorID == (uuid.UUID{}) ||
 		input.UserID == (uuid.UUID{}) {
@@ -163,7 +163,7 @@ func (s *Service) AddWorkspaceMember(
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			addWorkspaceMemberError = errors.Join(addWorkspaceMemberError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 
@@ -223,7 +223,7 @@ func (s *Service) AddWorkspaceMember(
 func (s *Service) RemoveWorkspaceMember(
 	ctx context.Context,
 	input RemoveWorkspaceMemberInput,
-) (resultErr error) {
+) (removeWorkspaceMemberError error) {
 	if input.WorkspaceID == (uuid.UUID{}) ||
 		input.ActorID == (uuid.UUID{}) ||
 		input.UserID == (uuid.UUID{}) {
@@ -235,11 +235,11 @@ func (s *Service) RemoveWorkspaceMember(
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
-		// Rollback must still release locks if the request was cancelled.
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		if err := tx.Rollback(cleanupCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+		if err := tx.RollbackUnlessClosed(ctx); err != nil {
+			removeWorkspaceMemberError = errors.Join(
+				fmt.Errorf("rollback transaction: %w", err),
+				removeWorkspaceMemberError,
+			)
 		}
 	}()
 
@@ -299,7 +299,10 @@ func (s *Service) RemoveWorkspaceMember(
 // DeleteWorkspace allows the owner to delete a workspace.
 //
 // Channels and messages are deleted by the database's cascading foreign keys.
-func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInput) (resultErr error) {
+func (s *Service) DeleteWorkspace(
+	ctx context.Context,
+	input DeleteWorkspaceInput,
+) (deleteWorkspaceError error) {
 	if input.WorkspaceID == (uuid.UUID{}) || input.ActorID == (uuid.UUID{}) {
 		return ErrInvalidID
 	}
@@ -310,7 +313,7 @@ func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInpu
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			deleteWorkspaceError = errors.Join(deleteWorkspaceError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 

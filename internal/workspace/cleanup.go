@@ -28,14 +28,16 @@ func (s *Service) runWorkspaceCleanup(ctx context.Context, interval time.Duratio
 // deleteEmptyWorkspaces deletes up to 100 empty workspaces and their channels.
 // Busy workspaces are skipped until a later run. Membership additions acquire
 // the same workspace locks, so the membership recheck is safe at READ COMMITTED.
-func (s *Service) deleteEmptyWorkspaces(ctx context.Context) (deleted int64, resultErr error) {
+func (s *Service) deleteEmptyWorkspaces(
+	ctx context.Context,
+) (deleted int64, deleteEmptyWorkspacesError error) {
 	tx, err := s.database.BeginTx(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("begin workspace cleanup: %w", err)
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(
+			deleteEmptyWorkspacesError = errors.Join(
 				fmt.Errorf("rollback transaction: %w", err),
 				err,
 			)
