@@ -78,6 +78,19 @@ func (q *Queries) DeleteWorkspace(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteWorkspacesOwnedByUser = `-- name: DeleteWorkspacesOwnedByUser :exec
+DELETE FROM workspaces AS w
+USING workspace_members AS m
+WHERE m.workspace_id = w.id
+  AND m.user_id = $1
+  AND m.role = 'owner'
+`
+
+func (q *Queries) DeleteWorkspacesOwnedByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspacesOwnedByUser, userID)
+	return err
+}
+
 const listUserWorkspaces = `-- name: ListUserWorkspaces :many
 SELECT workspaces.id, workspaces.name, workspaces.created_at
 FROM workspaces

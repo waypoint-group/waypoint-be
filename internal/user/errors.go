@@ -12,4 +12,5 @@ var (
 	ErrInvalidEmail       = errors.New("invalid email")
 	ErrInvalidDisplayName = errors.New("invalid display name")
 	ErrInvalidIdentity    = errors.New("identity issuer and subject are required")
+	ErrForbidden          = errors.New("insufficient user permissions")
 )

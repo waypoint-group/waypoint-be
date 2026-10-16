@@ -159,6 +159,46 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 	return result, nil
 }
 
+// DeleteUser
+func (s *Service) DeleteUser(ctx context.Context, input DeleteUserInput) (deleteUserError error) {
+	if input.ActorID != input.UserID {
+		return ErrForbidden
+	}
+
+	tx, err := s.database.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.RollbackUnlessClosed(ctx); err != nil {
+			deleteUserError = errors.Join(
+				fmt.Errorf("rollback transaction: %w", err),
+				deleteUserError,
+			)
+		}
+	}()
+
+	// Delete workspaces owned by the user...
+	err = tx.DeleteWorkspacesOwnedByUser(ctx, input.UserID)
+	if err != nil {
+		return fmt.Errorf("delete workspaces owned by user: %w", err)
+	}
+	// ...and the user themselves.
+	err = tx.DeleteUser(ctx, input.UserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("delete user: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 // GetActorID derives authority from the verified token.
 func (s *Service) GetActorID(w http.ResponseWriter, r *http.Request, jwtConfig middleware.JWTConfig) (uuid.UUID, bool) {
 	_, claims, err := middleware.ExtractAndValidateJWT(r, jwtConfig)

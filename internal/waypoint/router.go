@@ -36,6 +36,7 @@ func newRouter(database *db.Database, services *Services, cfg *Config) *http.Ser
 	mux.HandleFunc("GET /users", userH.ListUsers)
 	mux.HandleFunc("GET /users/{id}", userH.GetUser)
 	mux.HandleFunc("GET /me", userH.Me)
+	mux.Handle("DELETE /users/{id}", http.HandlerFunc(userH.DeleteUser))
 
 	// Workspaces
 	workspaceH := workspace.NewHandler(services.Workspaces, services.Users, cfg.JWT)

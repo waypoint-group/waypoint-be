@@ -118,3 +118,9 @@ type MeWorkspaceMembership struct {
 	WorkspaceID   string `json:"workspace_id"`
 	WorkspaceName string `json:"workspace_name"`
 }
+
+// DeleteUserInput contains input for user deletion.
+type DeleteUserInput struct {
+	UserID  uuid.UUID
+	ActorID uuid.UUID
+}

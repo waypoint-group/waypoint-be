@@ -18,3 +18,7 @@ WHERE i.issuer = $1 AND i.subject = $2;
 SELECT *
 FROM users
 ORDER BY id;
+
+-- name: DeleteUser :exec
+DELETE FROM users
+WHERE id = $1;

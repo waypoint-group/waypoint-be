@@ -160,6 +160,29 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteUser
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	actorID, ok := h.service.GetActorID(w, r, h.jwtConfig)
+	if !ok {
+		return
+	}
+
+	userID, err := httpx.PathID(r, "id")
+	if err != nil {
+		http.Error(w, ErrInvalidId.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.DeleteUser(r.Context(), DeleteUserInput{
+		UserID:  userID,
+		ActorID: actorID,
+	})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+}
+
 // writeError maps domain sentinels to HTTP statuses and hides unexpected causes.
 func writeError(w http.ResponseWriter, err error) {
 	status, public := http.StatusInternalServerError, "internal server error"

@@ -34,6 +34,13 @@ WHERE workspace_id = $1 AND user_id = $2;
 DELETE FROM workspaces
 WHERE id = $1;
 
+-- name: DeleteWorkspacesOwnedByUser :exec
+DELETE FROM workspaces AS w
+USING workspace_members AS m
+WHERE m.workspace_id = w.id
+  AND m.user_id = $1
+  AND m.role = 'owner';
+
 -- Serialize workspace operations through their shared parent row.
 -- The lock lasts until the surrounding transaction commits or rolls back.
 --
