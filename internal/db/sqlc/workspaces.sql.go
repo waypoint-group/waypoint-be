@@ -84,7 +84,7 @@ FROM workspaces
 JOIN workspace_members
     ON workspace_members.workspace_id = workspaces.id
 WHERE workspace_members.user_id = $1
-ORDER BY workspaces.name, workspaces.id
+ORDER BY workspaces.id
 `
 
 func (q *Queries) ListUserWorkspaces(ctx context.Context, userID uuid.UUID) ([]Workspace, error) {
