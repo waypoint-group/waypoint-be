@@ -53,28 +53,31 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 	return i, err
 }
 
-const deleteEmptyWorkspaces = `-- name: DeleteEmptyWorkspaces :execrows
+const deleteWorkspace = `-- name: DeleteWorkspace :execrows
 DELETE FROM workspaces
-WHERE id = ANY($1::uuid[])
-  AND NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = workspaces.id)
+WHERE id = $1
 `
 
-// Run after LockEmptyWorkspaces, in a separate statement to recheck membership.
-func (q *Queries) DeleteEmptyWorkspaces(ctx context.Context, workspaceIds []uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteEmptyWorkspaces, workspaceIds)
+func (q *Queries) DeleteWorkspace(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspace, id)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
 }
 
-const deleteWorkspace = `-- name: DeleteWorkspace :exec
-DELETE FROM workspaces
-WHERE id = $1
+const deleteWorkspacesOwnedByUser = `-- name: DeleteWorkspacesOwnedByUser :exec
+DELETE FROM workspaces AS w
+USING workspace_members AS m
+WHERE m.workspace_id = w.id
+  AND m.user_id = $1
+  AND m.role = 'owner'
 `
 
-func (q *Queries) DeleteWorkspace(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteWorkspace, id)
+// DeleteWorkspacesOwnedByUser removes all workspaces where the user is the owner.
+// Lock the user row first to exclude concurrent ownership creation during account deletion.
+func (q *Queries) DeleteWorkspacesOwnedByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteWorkspacesOwnedByUser, userID)
 	return err
 }
 
@@ -136,35 +139,6 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUI
 	return items, nil
 }
 
-const lockEmptyWorkspaces = `-- name: LockEmptyWorkspaces :many
-SELECT id FROM workspaces
-WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = workspaces.id)
-ORDER BY id
-LIMIT 100
-FOR UPDATE SKIP LOCKED
-`
-
-// Lock a bounded batch without waiting for active workspace operations or other cleaners.
-func (q *Queries) LockEmptyWorkspaces(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, lockEmptyWorkspaces)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const lockWorkspaceRow = `-- name: LockWorkspaceRow :one
 SELECT id, name, created_at FROM workspaces WHERE id = $1 FOR UPDATE
 `
@@ -178,7 +152,7 @@ func (q *Queries) LockWorkspaceRow(ctx context.Context, id uuid.UUID) (Workspace
 	return i, err
 }
 
-const removeWorkspaceMember = `-- name: RemoveWorkspaceMember :exec
+const removeWorkspaceMember = `-- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2
 `
@@ -188,9 +162,12 @@ type RemoveWorkspaceMemberParams struct {
 	UserID      uuid.UUID
 }
 
-func (q *Queries) RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error {
-	_, err := q.db.Exec(ctx, removeWorkspaceMember, arg.WorkspaceID, arg.UserID)
-	return err
+func (q *Queries) RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeWorkspaceMember, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const selectWorkspace = `-- name: SelectWorkspace :one

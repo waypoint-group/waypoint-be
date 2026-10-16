@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
@@ -15,39 +14,26 @@ import (
 )
 
 // Service manages workspaces and workspace membership.
+//
+// Every workspace has exactly one owner and therefore at least one member.
+// This invariant is preserved by the following rules:
+//   - Workspace creation adds the owner atomically
+//   - Workspace owners cannot be removed from the workspace
+//   - Deleting the owner's account deletes their workspaces atomically
 type Service struct {
-	database      *db.Database
-	cleanupCancel context.CancelFunc
-	cleanupDone   chan struct{}
+	database *db.Database
 }
 
-// NewService constructs a workspace service and starts periodic workspace cleanup.
-func NewService(database *db.Database, cleanupInterval time.Duration) *Service {
-	ctx, cancel := context.WithCancel(context.Background())
-	service := &Service{
-		database:      database,
-		cleanupCancel: cancel,
-		cleanupDone:   make(chan struct{}),
-	}
-	go func() {
-		defer close(service.cleanupDone)
-		service.runWorkspaceCleanup(ctx, cleanupInterval)
-	}()
-	return service
-}
-
-// Close cancels cleanup and waits for in-flight work to release its connection.
-// It is safe to call repeatedly; the database remains caller-owned.
-func (s *Service) Close() {
-	s.cleanupCancel()
-	<-s.cleanupDone
+// NewService constructs a workspace service.
+func NewService(database *db.Database) *Service {
+	return &Service{database: database}
 }
 
 // CreateWorkspace atomically creates a workspace and its owner membership.
 func (s *Service) CreateWorkspace(
 	ctx context.Context,
 	input CreateWorkspaceInput,
-) (_ *Workspace, resultErr error) {
+) (_ *Workspace, createWorkspaceError error) {
 	name := strings.TrimSpace(input.Name)
 	if name == "" {
 		return nil, ErrInvalidName
@@ -62,11 +48,11 @@ func (s *Service) CreateWorkspace(
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			createWorkspaceError = errors.Join(createWorkspaceError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 
-	row, err := tx.CreateWorkspace(
+	wsRow, err := tx.CreateWorkspace(
 		ctx,
 		sqlc.CreateWorkspaceParams{ID: uuid.NewV7(), Name: name},
 	)
@@ -76,7 +62,7 @@ func (s *Service) CreateWorkspace(
 	owner, err := tx.AddWorkspaceMember(
 		ctx,
 		sqlc.AddWorkspaceMemberParams{
-			WorkspaceID: row.ID,
+			WorkspaceID: wsRow.ID,
 			UserID:      input.ActorID,
 			Role:        string(WorkspaceRoleOwner),
 		},
@@ -91,14 +77,14 @@ func (s *Service) CreateWorkspace(
 		return nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
-	return workspaceFromRows(row, []sqlc.WorkspaceMember{owner}), nil
+	return workspaceFromRows(wsRow, []sqlc.WorkspaceMember{owner}), nil
 }
 
 // ReadWorkspace returns workspace details to a current member.
 func (s *Service) ReadWorkspace(
 	ctx context.Context,
 	input ReadWorkspaceInput,
-) (_ *Workspace, resultErr error) {
+) (_ *Workspace, readWorkspaceError error) {
 	if input.WorkspaceID == (uuid.UUID{}) || input.ActorID == (uuid.UUID{}) {
 		return nil, ErrInvalidID
 	}
@@ -109,15 +95,15 @@ func (s *Service) ReadWorkspace(
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			readWorkspaceError = errors.Join(readWorkspaceError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 
 	// Keep the permission check and returned membership list consistent with
 	// concurrent additions, removals, and workspace deletion.
-	row, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
+	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
+		return nil, ErrWorkspaceNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("lock workspace: %w", err)
@@ -143,14 +129,14 @@ func (s *Service) ReadWorkspace(
 		return nil, fmt.Errorf("commit transaction: %w", err)
 	}
 
-	return workspaceFromRows(row, members), nil
+	return workspaceFromRows(wsRow, members), nil
 }
 
 // AddWorkspaceMember allows the owner to add a registered user as a member.
 func (s *Service) AddWorkspaceMember(
 	ctx context.Context,
 	input AddWorkspaceMemberInput,
-) (_ *WorkspaceMember, resultErr error) {
+) (_ *WorkspaceMember, addWorkspaceMemberError error) {
 	if input.WorkspaceID == (uuid.UUID{}) ||
 		input.ActorID == (uuid.UUID{}) ||
 		input.UserID == (uuid.UUID{}) {
@@ -163,15 +149,15 @@ func (s *Service) AddWorkspaceMember(
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			addWorkspaceMemberError = errors.Join(addWorkspaceMemberError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 
 	// Lock before checking membership so concurrent workspace operations cannot
 	// invalidate the permission or membership checks before commit.
-	row, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
+	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
+		return nil, ErrWorkspaceNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("lock workspace: %w", err)
@@ -179,7 +165,7 @@ func (s *Service) AddWorkspaceMember(
 
 	actor, err := tx.SelectWorkspaceMember(
 		ctx,
-		sqlc.SelectWorkspaceMemberParams{WorkspaceID: row.ID, UserID: input.ActorID},
+		sqlc.SelectWorkspaceMemberParams{WorkspaceID: wsRow.ID, UserID: input.ActorID},
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -195,7 +181,7 @@ func (s *Service) AddWorkspaceMember(
 	member, err := tx.AddWorkspaceMember(
 		ctx,
 		sqlc.AddWorkspaceMemberParams{
-			WorkspaceID: row.ID,
+			WorkspaceID: wsRow.ID,
 			UserID:      input.UserID,
 			Role:        string(WorkspaceRoleMember),
 		},
@@ -223,7 +209,7 @@ func (s *Service) AddWorkspaceMember(
 func (s *Service) RemoveWorkspaceMember(
 	ctx context.Context,
 	input RemoveWorkspaceMemberInput,
-) (resultErr error) {
+) (removeWorkspaceMemberError error) {
 	if input.WorkspaceID == (uuid.UUID{}) ||
 		input.ActorID == (uuid.UUID{}) ||
 		input.UserID == (uuid.UUID{}) {
@@ -235,29 +221,29 @@ func (s *Service) RemoveWorkspaceMember(
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
-		// Rollback must still release locks if the request was cancelled.
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
-		defer cancel()
-		if err := tx.Rollback(cleanupCtx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+		if err := tx.RollbackUnlessClosed(ctx); err != nil {
+			removeWorkspaceMemberError = errors.Join(
+				fmt.Errorf("rollback transaction: %w", err),
+				removeWorkspaceMemberError,
+			)
 		}
 	}()
 
 	// Lock before checking membership so concurrent workspace operations cannot
 	// invalidate the permission or membership checks before commit.
-	row, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
+	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
+			return ErrWorkspaceNotFound
 		}
 
 		return fmt.Errorf("lock workspace: %w", err)
 	}
-
+	// Make sure action was performed by the owner.
 	actor, err := tx.SelectWorkspaceMember(
 		ctx,
 		sqlc.SelectWorkspaceMemberParams{
-			WorkspaceID: row.ID, UserID: input.ActorID,
+			WorkspaceID: wsRow.ID, UserID: input.ActorID,
 		},
 	)
 	if err != nil {
@@ -270,32 +256,23 @@ func (s *Service) RemoveWorkspaceMember(
 	if actor.Role != string(WorkspaceRoleOwner) {
 		return ErrForbidden
 	}
+	// Prevent the owner from removing themselves, which would invalidate
+	// the "a workspace always has at least one member (the owner) contract".
 	if input.UserID == input.ActorID {
 		return ErrOwnerRemoval
 	}
-
-	_, err = tx.SelectWorkspaceMember(
-		ctx,
-		sqlc.SelectWorkspaceMemberParams{
-			WorkspaceID: row.ID, UserID: input.UserID,
-		},
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrMemberNotFound
-		}
-
-		return fmt.Errorf("read target membership: %w", err)
-	}
-
-	err = tx.RemoveWorkspaceMember(
+	// Remove the workspace member.
+	removed, err := tx.RemoveWorkspaceMember(
 		ctx,
 		sqlc.RemoveWorkspaceMemberParams{
-			WorkspaceID: row.ID, UserID: input.UserID,
+			WorkspaceID: wsRow.ID, UserID: input.UserID,
 		},
 	)
 	if err != nil {
 		return fmt.Errorf("remove workspace member: %w", err)
+	}
+	if removed == 0 {
+		return ErrWorkspaceMemberNotFound
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -305,9 +282,13 @@ func (s *Service) RemoveWorkspaceMember(
 	return nil
 }
 
-// DeleteWorkspace allows the owner to delete a workspace once no other members remain.
-// Channels and messages are deleted by the database's cascading foreign keys.
-func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInput) (resultErr error) {
+// DeleteWorkspace allows the owner to delete a workspace, even when other members remain.
+//
+// Memberships, channels, and channel messages are deleted by cascading foreign keys.
+func (s *Service) DeleteWorkspace(
+	ctx context.Context,
+	input DeleteWorkspaceInput,
+) (deleteWorkspaceError error) {
 	if input.WorkspaceID == (uuid.UUID{}) || input.ActorID == (uuid.UUID{}) {
 		return ErrInvalidID
 	}
@@ -318,22 +299,22 @@ func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInpu
 	}
 	defer func() {
 		if err := tx.RollbackUnlessClosed(ctx); err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("rollback transaction: %w", err))
+			deleteWorkspaceError = errors.Join(deleteWorkspaceError, fmt.Errorf("rollback transaction: %w", err))
 		}
 	}()
 
 	// Lock before checking membership so concurrent workspace operations cannot
 	// invalidate the permission or membership checks before commit.
-	row, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
+	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
+			return ErrWorkspaceNotFound
 		}
 
 		return fmt.Errorf("lock workspace: %w", err)
 	}
-
-	actor, err := tx.SelectWorkspaceMember(ctx, sqlc.SelectWorkspaceMemberParams{WorkspaceID: row.ID, UserID: input.ActorID})
+	// Make sure action was performed by the owner.
+	actor, err := tx.SelectWorkspaceMember(ctx, sqlc.SelectWorkspaceMemberParams{WorkspaceID: wsRow.ID, UserID: input.ActorID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrForbidden
@@ -344,17 +325,13 @@ func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInpu
 	if actor.Role != string(WorkspaceRoleOwner) {
 		return ErrForbidden
 	}
-
-	members, err := tx.ListWorkspaceMembers(ctx, row.ID)
+	// Delete the workspace.
+	removed, err := tx.DeleteWorkspace(ctx, wsRow.ID)
 	if err != nil {
-		return fmt.Errorf("list workspace members: %w", err)
-	}
-	if len(members) != 1 {
-		return ErrWorkspaceNotEmpty
-	}
-
-	if err := tx.DeleteWorkspace(ctx, row.ID); err != nil {
 		return fmt.Errorf("delete workspace: %w", err)
+	}
+	if removed == 0 {
+		return ErrWorkspaceNotFound
 	}
 
 	if err := tx.Commit(ctx); err != nil {

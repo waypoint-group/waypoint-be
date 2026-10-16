@@ -26,43 +26,28 @@ SELECT *
 FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2;
 
--- name: RemoveWorkspaceMember :exec
+-- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2;
 
--- name: DeleteWorkspace :exec
+-- name: DeleteWorkspace :execrows
 DELETE FROM workspaces
 WHERE id = $1;
+
+-- DeleteWorkspacesOwnedByUser removes all workspaces where the user is the owner.
+-- Lock the user row first to exclude concurrent ownership creation during account deletion.
+-- name: DeleteWorkspacesOwnedByUser :exec
+DELETE FROM workspaces AS w
+USING workspace_members AS m
+WHERE m.workspace_id = w.id
+  AND m.user_id = $1
+  AND m.role = 'owner';
+
+-- name: ListWorkspaceMembers :many
+SELECT * FROM workspace_members WHERE workspace_id = $1 ORDER BY user_id;
 
 -- Serialize workspace operations through their shared parent row.
 -- The lock lasts until the surrounding transaction commits or rolls back.
 --
 -- name: LockWorkspaceRow :one
 SELECT * FROM workspaces WHERE id = $1 FOR UPDATE;
-
--- name: ListWorkspaceMembers :many
-SELECT * FROM workspace_members WHERE workspace_id = $1 ORDER BY user_id;
-
--- Lock a bounded batch without waiting for active workspace operations or other cleaners.
---
--- NOTE: This statement executes in the following atomic operations:
--- 1) IDs of empty workspaces are selected from a snapshot S1
--- 2) The rows for said IDs (up to 100) are locked (skipping already locked rows)
---
--- Between these two operations, another transaction could have inserted a new user into
--- one of the previously empty workspaces. For this reason, the actual empty workspace
--- deletion happens in a separate statement in DeleteEmptyWorkspaces.
---
--- name: LockEmptyWorkspaces :many
-SELECT id FROM workspaces
-WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = workspaces.id)
-ORDER BY id
-LIMIT 100
-FOR UPDATE SKIP LOCKED;
-
--- Run after LockEmptyWorkspaces, in a separate statement to recheck membership.
---
--- name: DeleteEmptyWorkspaces :execrows
-DELETE FROM workspaces
-WHERE id = ANY(sqlc.arg(workspace_ids)::uuid[])
-  AND NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = workspaces.id);

@@ -19,12 +19,14 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateUserIdentity(ctx context.Context, arg CreateUserIdentityParams) (UserIdentity, error)
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
-	DeleteChannel(ctx context.Context, id uuid.UUID) error
+	DeleteChannel(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteChannelMessage(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDirectMessage(ctx context.Context, id uuid.UUID) (int64, error)
-	// Run after LockEmptyWorkspaces, in a separate statement to recheck membership.
-	DeleteEmptyWorkspaces(ctx context.Context, workspaceIds []uuid.UUID) (int64, error)
-	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
+	DeleteUser(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteWorkspace(ctx context.Context, id uuid.UUID) (int64, error)
+	// DeleteWorkspacesOwnedByUser removes all workspaces where the user is the owner.
+	// Lock the user row first to exclude concurrent ownership creation during account deletion.
+	DeleteWorkspacesOwnedByUser(ctx context.Context, userID uuid.UUID) error
 	ListChannelMessages(ctx context.Context, arg ListChannelMessagesParams) ([]ChannelMessage, error)
 	ListChannelThreadReplies(ctx context.Context, threadRootID *uuid.UUID) ([]ChannelMessage, error)
 	ListDirectMessagesBetween(ctx context.Context, arg ListDirectMessagesBetweenParams) ([]DirectMessage, error)
@@ -33,12 +35,15 @@ type Querier interface {
 	ListUsers(ctx context.Context) ([]User, error)
 	ListWorkspaceChannels(ctx context.Context, workspaceID uuid.UUID) ([]Channel, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceMember, error)
-	// Lock a bounded batch without waiting for active workspace operations or other cleaners.
-	LockEmptyWorkspaces(ctx context.Context) ([]uuid.UUID, error)
+	// Serialize user operations through their shared parent row.
+	// The lock lasts until the surrounding transaction commits or rolls back.
+	//
+	LockUserRow(ctx context.Context, id uuid.UUID) (User, error)
 	// Serialize workspace operations through their shared parent row.
 	// The lock lasts until the surrounding transaction commits or rolls back.
+	//
 	LockWorkspaceRow(ctx context.Context, id uuid.UUID) (Workspace, error)
-	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error
+	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) (int64, error)
 	SelectChannel(ctx context.Context, id uuid.UUID) (Channel, error)
 	SelectChannelMessage(ctx context.Context, id uuid.UUID) (ChannelMessage, error)
 	SelectDirectMessage(ctx context.Context, id uuid.UUID) (DirectMessage, error)

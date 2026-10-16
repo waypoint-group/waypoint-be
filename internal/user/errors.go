@@ -3,6 +3,7 @@ package user
 import "errors"
 
 var (
+	ErrForbidden          = errors.New("insufficient user permissions")
 	ErrNotFound           = errors.New("user not found")
 	ErrUserNameTaken      = errors.New("user name already in use")
 	ErrEmailTaken         = errors.New("email already in use")

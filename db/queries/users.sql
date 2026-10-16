@@ -18,3 +18,13 @@ WHERE i.issuer = $1 AND i.subject = $2;
 SELECT *
 FROM users
 ORDER BY id;
+
+-- name: DeleteUser :execrows
+DELETE FROM users
+WHERE id = $1;
+
+-- Serialize user operations through their shared parent row.
+-- The lock lasts until the surrounding transaction commits or rolls back.
+--
+-- name: LockUserRow :one
+SELECT * FROM users WHERE id = $1 FOR UPDATE;

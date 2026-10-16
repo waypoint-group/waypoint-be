@@ -42,6 +42,19 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :execrows
+DELETE FROM users
+WHERE id = $1
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listUsers = `-- name: ListUsers :many
 SELECT id, email, user_name, display_name, created_at
 FROM users
@@ -72,6 +85,25 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockUserRow = `-- name: LockUserRow :one
+SELECT id, email, user_name, display_name, created_at FROM users WHERE id = $1 FOR UPDATE
+`
+
+// Serialize user operations through their shared parent row.
+// The lock lasts until the surrounding transaction commits or rolls back.
+func (q *Queries) LockUserRow(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, lockUserRow, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.UserName,
+		&i.DisplayName,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const selectUser = `-- name: SelectUser :one

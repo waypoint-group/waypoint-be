@@ -4,7 +4,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"uuid"
 
 	"github.com/waypoint-group/waypoint-be/internal/httpx"
 	"github.com/waypoint-group/waypoint-be/internal/middleware"
@@ -25,7 +24,7 @@ func NewHandler(service *Service, users *user.Service, jwtConfig middleware.JWTC
 
 // CreateWorkspace creates a workspace owned by the authenticated user.
 func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.actorID(w, r)
+	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
 	if !ok {
 		return
 	}
@@ -50,7 +49,7 @@ func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
 
 // GetWorkspace returns workspace details to an authenticated member.
 func (h *Handler) GetWorkspace(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.actorID(w, r)
+	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
 	if !ok {
 		return
 	}
@@ -75,7 +74,7 @@ func (h *Handler) GetWorkspace(w http.ResponseWriter, r *http.Request) {
 
 // AddWorkspaceMember adds the user in the path with the member role.
 func (h *Handler) AddWorkspaceMember(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.actorID(w, r)
+	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
 	if !ok {
 		return
 	}
@@ -105,7 +104,7 @@ func (h *Handler) AddWorkspaceMember(w http.ResponseWriter, r *http.Request) {
 
 // RemoveWorkspaceMember removes the user in the path, subject to owner permissions.
 func (h *Handler) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.actorID(w, r)
+	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
 	if !ok {
 		return
 	}
@@ -128,9 +127,10 @@ func (h *Handler) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// DeleteWorkspace deletes a workspace when the authenticated owner is its only member.
+// DeleteWorkspace deletes a workspace and its contents for its authenticated owner,
+// even when other members remain.
 func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.actorID(w, r)
+	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
 	if !ok {
 		return
 	}
@@ -148,50 +148,26 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// actorID derives authority from the verified token.
-func (h *Handler) actorID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	_, claims, err := middleware.ExtractAndValidateJWT(r, h.jwtConfig)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return uuid.UUID{}, false
-	}
-
-	actor, err := h.users.ReadUserByIdentity(r.Context(), claims.Issuer, claims.Subject)
-	if err != nil {
-		if errors.Is(err, user.ErrNotFound) {
-			http.Error(w, ErrForbidden.Error(), http.StatusForbidden)
-		} else {
-			log.Printf("resolve workspace actor: %v", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-		}
-		return uuid.UUID{}, false
-	}
-
-	return actor.ID, true
-}
-
 // writeError maps domain sentinels to HTTP statuses and hides unexpected causes.
 func writeError(w http.ResponseWriter, err error) {
 	status, public := http.StatusInternalServerError, "internal server error"
 	switch {
+	case errors.Is(err, ErrForbidden):
+		status, public = http.StatusForbidden, ErrForbidden.Error()
 	case errors.Is(err, ErrInvalidID):
 		status, public = http.StatusBadRequest, ErrInvalidID.Error()
 	case errors.Is(err, ErrInvalidName):
 		status, public = http.StatusBadRequest, ErrInvalidName.Error()
-	case errors.Is(err, ErrForbidden):
-		status, public = http.StatusForbidden, ErrForbidden.Error()
-	case errors.Is(err, ErrNotFound):
-		status, public = http.StatusNotFound, ErrNotFound.Error()
-	case errors.Is(err, ErrMemberNotFound):
-		status, public = http.StatusNotFound, ErrMemberNotFound.Error()
+	case errors.Is(err, ErrWorkspaceNotFound):
+		status, public = http.StatusNotFound, ErrWorkspaceNotFound.Error()
+	case errors.Is(err, ErrWorkspaceMemberNotFound):
+		status, public = http.StatusNotFound, ErrWorkspaceMemberNotFound.Error()
 	case errors.Is(err, ErrUserNotFound):
 		status, public = http.StatusNotFound, ErrUserNotFound.Error()
 	case errors.Is(err, ErrAlreadyMember):
 		status, public = http.StatusConflict, ErrAlreadyMember.Error()
 	case errors.Is(err, ErrOwnerRemoval):
 		status, public = http.StatusConflict, ErrOwnerRemoval.Error()
-	case errors.Is(err, ErrWorkspaceNotEmpty):
-		status, public = http.StatusConflict, ErrWorkspaceNotEmpty.Error()
 	}
 	if status == http.StatusInternalServerError {
 		log.Printf("workspace error: %v", err)

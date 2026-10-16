@@ -66,7 +66,6 @@ func TestWorkspaces_Lifecycle(t *testing.T) {
 	}
 
 	workspaceRequest(t, uut, ownerToken, http.MethodPost, membershipPath, "", http.StatusConflict, workspaceapi.ErrAlreadyMember)
-	workspaceRequest(t, uut, ownerToken, http.MethodDelete, path, "", http.StatusConflict, workspaceapi.ErrWorkspaceNotEmpty)
 	workspaceRequest(t, uut, memberToken, http.MethodDelete, path, "", http.StatusForbidden, workspaceapi.ErrForbidden)
 	workspaceRequest(t, uut, memberToken, http.MethodDelete, membershipPath, "", http.StatusForbidden, workspaceapi.ErrForbidden)
 	workspaceRequest(t, uut, memberToken, http.MethodPost, path+"/users/"+owner.ID, "", http.StatusForbidden, workspaceapi.ErrForbidden)
@@ -75,12 +74,12 @@ func TestWorkspaces_Lifecycle(t *testing.T) {
 	assertWorkspaceMemberships(t, uut, memberToken)
 
 	workspaceRequest(t, uut, memberToken, http.MethodGet, path, "", http.StatusForbidden, workspaceapi.ErrForbidden)
-	workspaceRequest(t, uut, ownerToken, http.MethodDelete, membershipPath, "", http.StatusNotFound, workspaceapi.ErrMemberNotFound)
+	workspaceRequest(t, uut, ownerToken, http.MethodDelete, membershipPath, "", http.StatusNotFound, workspaceapi.ErrWorkspaceMemberNotFound)
 	workspaceRequest(t, uut, ownerToken, http.MethodDelete, path, "", http.StatusNoContent, nil)
 	assertWorkspaceMemberships(t, uut, ownerToken)
 
-	workspaceRequest(t, uut, ownerToken, http.MethodGet, path, "", http.StatusNotFound, workspaceapi.ErrNotFound)
-	workspaceRequest(t, uut, ownerToken, http.MethodDelete, path, "", http.StatusNotFound, workspaceapi.ErrNotFound)
+	workspaceRequest(t, uut, ownerToken, http.MethodGet, path, "", http.StatusNotFound, workspaceapi.ErrWorkspaceNotFound)
+	workspaceRequest(t, uut, ownerToken, http.MethodDelete, path, "", http.StatusNotFound, workspaceapi.ErrWorkspaceNotFound)
 }
 
 // TestWorkspaces_ValidationAndAuthentication rejects malformed input and untrusted or unregistered callers.
@@ -101,7 +100,7 @@ func TestWorkspaces_ValidationAndAuthentication(t *testing.T) {
 	} {
 		workspaceRequest(t, uut, "", route.method, route.path, "{}", http.StatusUnauthorized, nil)
 		workspaceRequest(t, uut, "invalid-token", route.method, route.path, "{}", http.StatusUnauthorized, nil)
-		workspaceRequest(t, uut, workspaceToken(t, "missing"), route.method, route.path, "{}", http.StatusForbidden, workspaceapi.ErrForbidden)
+		workspaceRequest(t, uut, workspaceToken(t, "missing"), route.method, route.path, "{}", http.StatusForbidden, userapi.ErrForbidden)
 	}
 
 	for _, body := range []string{`{}`, `{"name":"  "}`, `null`, `[]`, `{`, `{"name":"x"} {}`, `{"name":"x","actor_id":"` + owner.ID + `"}`, `{"name":"` + strings.Repeat("x", 1<<20) + `"}`} {
@@ -120,9 +119,9 @@ func TestWorkspaces_ValidationAndAuthentication(t *testing.T) {
 
 	missing := uuid.NewV7().String()
 	workspaceRequest(t, uut, token, http.MethodPost, path+"/users/"+missing, "", http.StatusNotFound, workspaceapi.ErrUserNotFound)
-	workspaceRequest(t, uut, token, http.MethodDelete, path+"/users/"+missing, "", http.StatusNotFound, workspaceapi.ErrMemberNotFound)
+	workspaceRequest(t, uut, token, http.MethodDelete, path+"/users/"+missing, "", http.StatusNotFound, workspaceapi.ErrWorkspaceMemberNotFound)
 	for _, method := range []string{http.MethodPost, http.MethodDelete} {
-		workspaceRequest(t, uut, token, method, "/workspaces/"+missing+"/users/"+owner.ID, "", http.StatusNotFound, workspaceapi.ErrNotFound)
+		workspaceRequest(t, uut, token, method, "/workspaces/"+missing+"/users/"+owner.ID, "", http.StatusNotFound, workspaceapi.ErrWorkspaceNotFound)
 	}
 
 	assertWorkspaceMemberships(t, uut, token, created)
@@ -377,7 +376,7 @@ func TestWorkspaces_ChannelMembershipCascade(t *testing.T) {
 	if err := conn.QueryRow(t.Context(), "SELECT count(*) FROM channel_members WHERE user_id = $1", memberID).Scan(&count); err != nil || count != 3 {
 		t.Fatalf("expected cascade rollback, count=%d err=%v", count, err)
 	}
-	if err := queries.RemoveWorkspaceMember(t.Context(), sqlc.RemoveWorkspaceMemberParams{WorkspaceID: workspaceID, UserID: memberID}); err != nil {
+	if _, err := queries.RemoveWorkspaceMember(t.Context(), sqlc.RemoveWorkspaceMemberParams{WorkspaceID: workspaceID, UserID: memberID}); err != nil {
 		t.Fatal(err)
 	}
 	if err := conn.QueryRow(t.Context(), "SELECT count(*) FROM channel_members WHERE user_id = $1", memberID).Scan(&count); err != nil || count != 1 {
@@ -386,7 +385,7 @@ func TestWorkspaces_ChannelMembershipCascade(t *testing.T) {
 	if err := conn.QueryRow(t.Context(), "SELECT count(*) FROM channel_members WHERE user_id = $1", ownerID).Scan(&count); err != nil || count != 1 {
 		t.Fatalf("expected owner's membership preserved, count=%d err=%v", count, err)
 	}
-	if err := queries.DeleteChannel(t.Context(), channels[0]); err != nil {
+	if _, err := queries.DeleteChannel(t.Context(), channels[0]); err != nil {
 		t.Fatal(err)
 	}
 	if err := conn.QueryRow(t.Context(), "SELECT count(*) FROM channel_members WHERE channel_id = $1", channels[0]).Scan(&count); err != nil || count != 0 {

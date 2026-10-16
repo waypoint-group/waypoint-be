@@ -199,6 +199,31 @@ func TestUsers_List(t *testing.T) {
 	assertUsers(t, uut, []userapi.CreateUserResponse{ada, linkedAda})
 }
 
+func TestUsers_Delete(t *testing.T) {
+	uut := newWaypoint(t)
+	owner := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
+	other := createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
+	token := workspaceToken(t, "ada")
+	unregisteredToken := workspaceToken(t, "missing")
+	path := "/users/" + owner.ID
+	missingPath := "/users/" + uuid.NewV7().String()
+
+	for _, target := range []string{path, missingPath} {
+		for _, invalidToken := range []string{"", "invalid-token"} {
+			workspaceRequest(t, uut, invalidToken, http.MethodDelete, target, "", http.StatusUnauthorized, nil)
+		}
+	}
+	workspaceRequest(t, uut, token, http.MethodDelete, "/users/invalid", "", http.StatusBadRequest, userapi.ErrInvalidId)
+	workspaceRequest(t, uut, token, http.MethodDelete, "/users/"+other.ID, "", http.StatusForbidden, userapi.ErrForbidden)
+	workspaceRequest(t, uut, unregisteredToken, http.MethodDelete, path, "", http.StatusForbidden, userapi.ErrForbidden)
+	workspaceRequest(t, uut, token, http.MethodDelete, missingPath, "", http.StatusForbidden, userapi.ErrForbidden)
+
+	workspaceRequest(t, uut, token, http.MethodDelete, path, "", http.StatusNoContent, nil)
+	workspaceRequest(t, uut, token, http.MethodDelete, path, "", http.StatusForbidden, userapi.ErrForbidden)
+	workspaceRequest(t, uut, token, http.MethodDelete, "/users/"+other.ID, "", http.StatusForbidden, userapi.ErrForbidden)
+	assertUsers(t, uut, []userapi.CreateUserResponse{other})
+}
+
 func createTestUserChecked(
 	t *testing.T,
 	uut *testlib.TestWaypoint,

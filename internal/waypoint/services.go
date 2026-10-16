@@ -14,10 +14,6 @@ type Services struct {
 func newServices(database *db.Database, cfg *Config) *Services {
 	return &Services{
 		Users:      user.NewService(database),
-		Workspaces: workspace.NewService(database, cfg.WorkspaceCleanupInterval),
+		Workspaces: workspace.NewService(database),
 	}
-}
-
-func (s *Services) Close() {
-	s.Workspaces.Close()
 }

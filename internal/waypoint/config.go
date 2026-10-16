@@ -1,8 +1,6 @@
 package waypoint
 
 import (
-	"time"
-
 	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
@@ -14,8 +12,6 @@ type Config struct {
 	DatabaseURL string
 	// Migrate controls whether database migrations are run before startup.
 	Migrate bool
-	// WorkspaceCleanupInterval is the time interval between workspace cleanup runs.
-	WorkspaceCleanupInterval time.Duration
 	// JWT configures access token verification; an empty configuration rejects authenticated requests.
 	JWT middleware.JWTConfig
 }

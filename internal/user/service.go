@@ -1,9 +1,12 @@
+// Package user manages local accounts and their external identity mappings.
 package user
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
 	"strings"
 	"uuid"
 
@@ -11,9 +14,10 @@ import (
 
 	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
+	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
-// Service manages user registration and profile retrieval.
+// Service manages user registration, profile retrieval, and account deletion.
 type Service struct {
 	database *db.Database
 }
@@ -154,6 +158,80 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 		result[i] = userFromRow(user)
 	}
 	return result, nil
+}
+
+// DeleteUser allows an actor to delete only their own local account.
+func (s *Service) DeleteUser(ctx context.Context, input DeleteUserInput) (deleteUserError error) {
+	if input.ActorID != input.UserID {
+		return ErrForbidden
+	}
+
+	tx, err := s.database.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.RollbackUnlessClosed(ctx); err != nil {
+			deleteUserError = errors.Join(
+				fmt.Errorf("rollback transaction: %w", err),
+				deleteUserError,
+			)
+		}
+	}()
+
+	// Lock before deleting workspaces owned by user so concurrent operations
+	// do not add new user-owned workspaces which would be bypassed by the
+	// deletion.
+	userRow, err := tx.LockUserRow(ctx, input.UserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+
+		return fmt.Errorf("lock user: %w", err)
+	}
+
+	// Delete workspaces owned by the user...
+	err = tx.DeleteWorkspacesOwnedByUser(ctx, userRow.ID)
+	if err != nil {
+		return fmt.Errorf("delete workspaces owned by user: %w", err)
+	}
+	// ...and the user themselves.
+	removed, err := tx.DeleteUser(ctx, userRow.ID)
+	if err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	if removed == 0 {
+		return ErrNotFound
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// GetActorID validates the request's bearer token and resolves its local user ID.
+func (s *Service) GetActorID(w http.ResponseWriter, r *http.Request, jwtConfig middleware.JWTConfig) (uuid.UUID, bool) {
+	_, claims, err := middleware.ExtractAndValidateJWT(r, jwtConfig)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return uuid.UUID{}, false
+	}
+
+	actor, err := s.ReadUserByIdentity(r.Context(), claims.Issuer, claims.Subject)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			http.Error(w, ErrForbidden.Error(), http.StatusForbidden)
+		} else {
+			log.Printf("resolve actor identity: %v", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+		}
+		return uuid.UUID{}, false
+	}
+
+	return actor.ID, true
 }
 
 func userFromRow(row sqlc.User) User {

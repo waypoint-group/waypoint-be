@@ -4,19 +4,20 @@ The server uses Go's `net/http` `ServeMux` method and path patterns. The local d
 
 ## Routes
 
-| Method and path                                     | Authentication                                             | Behavior                                                         |
-| --------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------- |
-| `GET /healthz`                                      | None                                                       | Process health                                                   |
-| `GET /readyz`                                       | None                                                       | PostgreSQL readiness                                             |
-| `POST /users`                                       | Bearer JWT                                                 | Create a local profile from token email/identity and body fields |
-| `GET /users`                                        | None                                                       | List all user profiles                                           |
-| `GET /users/{id}`                                   | None                                                       | Get a profile by UUID                                            |
-| `GET /me`                                           | Bearer JWT                                                 | Get the profile and workspace memberships for the token identity |
-| `POST /workspaces`                                  | Bearer JWT with existing local profile                     | Create workspace; caller becomes owner                           |
-| `GET /workspaces/{workspace_id}`                    | Bearer JWT with existing local profile and membership      | Get workspace and members                                        |
-| `POST /workspaces/{workspace_id}/users/{user_id}`   | Bearer JWT; caller must be owner                           | Add existing user as member                                      |
-| `DELETE /workspaces/{workspace_id}/users/{user_id}` | Bearer JWT; caller must be owner                           | Remove a member                                                  |
-| `DELETE /workspaces/{workspace_id}`                 | Bearer JWT; caller must be sole remaining member and owner | Delete workspace                                                 |
+| Method and path                                     | Authentication                                        | Behavior                                                         |
+| --------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
+| `GET /healthz`                                      | None                                                  | Process health                                                   |
+| `GET /readyz`                                       | None                                                  | PostgreSQL readiness                                             |
+| `POST /users`                                       | Bearer JWT                                            | Create a local profile from token email/identity and body fields |
+| `GET /users`                                        | None                                                  | List all user profiles                                           |
+| `GET /users/{id}`                                   | None                                                  | Get a profile by UUID                                            |
+| `DELETE /users/{id}`                                | Bearer JWT; caller must match the local user ID        | Delete the local account and its owned workspaces                |
+| `GET /me`                                           | Bearer JWT                                            | Get the profile and workspace memberships for the token identity |
+| `POST /workspaces`                                  | Bearer JWT with existing local profile                | Create workspace; caller becomes owner                           |
+| `GET /workspaces/{workspace_id}`                    | Bearer JWT with existing local profile and membership | Get workspace and members                                        |
+| `POST /workspaces/{workspace_id}/users/{user_id}`   | Bearer JWT; caller must be owner                      | Add existing user as member                                      |
+| `DELETE /workspaces/{workspace_id}/users/{user_id}` | Bearer JWT; caller must be owner                      | Remove a member; cannot be owner                                 |
+| `DELETE /workspaces/{workspace_id}`                 | Bearer JWT; caller must be owner                      | Delete workspace and its contents                                |
 
 ## Authentication
 
