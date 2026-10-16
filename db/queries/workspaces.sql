@@ -41,14 +41,14 @@ WHERE m.workspace_id = w.id
   AND m.user_id = $1
   AND m.role = 'owner';
 
+-- name: ListWorkspaceMembers :many
+SELECT * FROM workspace_members WHERE workspace_id = $1 ORDER BY user_id;
+
 -- Serialize workspace operations through their shared parent row.
 -- The lock lasts until the surrounding transaction commits or rolls back.
 --
 -- name: LockWorkspaceRow :one
 SELECT * FROM workspaces WHERE id = $1 FOR UPDATE;
-
--- name: ListWorkspaceMembers :many
-SELECT * FROM workspace_members WHERE workspace_id = $1 ORDER BY user_id;
 
 -- Lock a bounded batch without waiting for active workspace operations or other cleaners.
 --
