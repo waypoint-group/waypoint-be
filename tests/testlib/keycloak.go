@@ -20,7 +20,7 @@ import (
 	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
-//go:embed testdata/waypoint-realm.json
+//go:embed testdata/waypoint-test-realm.json
 var waypointRealm []byte
 
 type Keycloak struct {

@@ -6,6 +6,7 @@ Start with the page that matches the task:
 | ------------------------------ | ------------------------------------------ | --------------------------------------------------- |
 | Local development              | [Development guide](development/README.md) | Setup, commands, and verification                   |
 | Local services and manual auth | [Local setup](development/local-setup.md)  | Compose, environment, Keycloak, and first API calls |
+| Frontend integration           | [Frontend guide](frontend/README.md)       | Interactions with the frontend app                  |
 | System design                  | [Architecture](architecture/README.md)     | Package boundaries and responsibilities             |
 | HTTP contract                  | [API reference](api/README.md)             | Routes, auth requirements, and status codes         |
 | PostgreSQL                     | [Database guide](database/README.md)       | Data model, migrations, and generated queries       |
