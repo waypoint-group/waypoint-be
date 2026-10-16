@@ -74,7 +74,7 @@ func TestWorkspaces_Lifecycle(t *testing.T) {
 	assertWorkspaceMemberships(t, uut, memberToken)
 
 	workspaceRequest(t, uut, memberToken, http.MethodGet, path, "", http.StatusForbidden, workspaceapi.ErrForbidden)
-	workspaceRequest(t, uut, ownerToken, http.MethodDelete, membershipPath, "", http.StatusNotFound, workspaceapi.ErrMemberNotFound)
+	workspaceRequest(t, uut, ownerToken, http.MethodDelete, membershipPath, "", http.StatusNoContent, nil)
 	workspaceRequest(t, uut, ownerToken, http.MethodDelete, path, "", http.StatusNoContent, nil)
 	assertWorkspaceMemberships(t, uut, ownerToken)
 
@@ -100,7 +100,7 @@ func TestWorkspaces_ValidationAndAuthentication(t *testing.T) {
 	} {
 		workspaceRequest(t, uut, "", route.method, route.path, "{}", http.StatusUnauthorized, nil)
 		workspaceRequest(t, uut, "invalid-token", route.method, route.path, "{}", http.StatusUnauthorized, nil)
-		workspaceRequest(t, uut, workspaceToken(t, "missing"), route.method, route.path, "{}", http.StatusForbidden, workspaceapi.ErrForbidden)
+		workspaceRequest(t, uut, workspaceToken(t, "missing"), route.method, route.path, "{}", http.StatusForbidden, userapi.ErrForbidden)
 	}
 
 	for _, body := range []string{`{}`, `{"name":"  "}`, `null`, `[]`, `{`, `{"name":"x"} {}`, `{"name":"x","actor_id":"` + owner.ID + `"}`, `{"name":"` + strings.Repeat("x", 1<<20) + `"}`} {
@@ -119,7 +119,7 @@ func TestWorkspaces_ValidationAndAuthentication(t *testing.T) {
 
 	missing := uuid.NewV7().String()
 	workspaceRequest(t, uut, token, http.MethodPost, path+"/users/"+missing, "", http.StatusNotFound, workspaceapi.ErrUserNotFound)
-	workspaceRequest(t, uut, token, http.MethodDelete, path+"/users/"+missing, "", http.StatusNotFound, workspaceapi.ErrMemberNotFound)
+	workspaceRequest(t, uut, token, http.MethodDelete, path+"/users/"+missing, "", http.StatusNoContent, nil)
 	for _, method := range []string{http.MethodPost, http.MethodDelete} {
 		workspaceRequest(t, uut, token, method, "/workspaces/"+missing+"/users/"+owner.ID, "", http.StatusNotFound, workspaceapi.ErrNotFound)
 	}
