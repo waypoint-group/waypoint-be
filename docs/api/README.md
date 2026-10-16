@@ -11,6 +11,7 @@ The server uses Go's `net/http` `ServeMux` method and path patterns. The local d
 | `POST /users`                                       | Bearer JWT                                            | Create a local profile from token email/identity and body fields |
 | `GET /users`                                        | None                                                  | List all user profiles                                           |
 | `GET /users/{id}`                                   | None                                                  | Get a profile by UUID                                            |
+| `DELETE /users/{id}`                                | Bearer JWT; caller must match the local user ID        | Delete the local account and its owned workspaces                |
 | `GET /me`                                           | Bearer JWT                                            | Get the profile and workspace memberships for the token identity |
 | `POST /workspaces`                                  | Bearer JWT with existing local profile                | Create workspace; caller becomes owner                           |
 | `GET /workspaces/{workspace_id}`                    | Bearer JWT with existing local profile and membership | Get workspace and members                                        |
