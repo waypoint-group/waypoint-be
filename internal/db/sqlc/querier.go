@@ -22,9 +22,6 @@ type Querier interface {
 	DeleteChannel(ctx context.Context, id uuid.UUID) error
 	DeleteChannelMessage(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDirectMessage(ctx context.Context, id uuid.UUID) (int64, error)
-	// Run after LockEmptyWorkspaces, in a separate statement to recheck membership.
-	//
-	DeleteEmptyWorkspaces(ctx context.Context, workspaceIds []uuid.UUID) (int64, error)
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspacesOwnedByUser(ctx context.Context, userID uuid.UUID) error
@@ -36,8 +33,6 @@ type Querier interface {
 	ListUsers(ctx context.Context) ([]User, error)
 	ListWorkspaceChannels(ctx context.Context, workspaceID uuid.UUID) ([]Channel, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceMember, error)
-	// Lock a bounded batch without waiting for active workspace operations or other cleaners.
-	LockEmptyWorkspaces(ctx context.Context) ([]uuid.UUID, error)
 	// Serialize user operations through their shared parent row.
 	// The lock lasts until the surrounding transaction commits or rolls back.
 	//

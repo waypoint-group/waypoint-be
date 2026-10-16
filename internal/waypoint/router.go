@@ -9,16 +9,6 @@ import (
 	"github.com/waypoint-group/waypoint-be/internal/workspace"
 )
 
-// router owns the HTTP routes and the services that require shutdown.
-type router struct {
-	*http.ServeMux
-	workspaceService *workspace.Service
-}
-
-func (r *router) Close() {
-	r.workspaceService.Close()
-}
-
 // newRouter returns the HTTP handler containing all Waypoint API routes.
 func newRouter(database *db.Database, services *Services, cfg *Config) *http.ServeMux {
 	mux := http.NewServeMux()

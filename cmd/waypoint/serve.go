@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/waypoint-group/waypoint-be/internal/middleware"
@@ -15,11 +14,10 @@ import (
 
 // ServeCommand configures the Waypoint HTTP server command.
 type ServeCommand struct {
-	Port                     int       `name:"port" default:"8080" env:"WAYPOINT_HTTP_PORT" required:"" help:"HTTP listen port."`
-	DatabaseURL              string    `name:"database-url" env:"WAYPOINT_DATABASE_URL" required:"" help:"PostgreSQL connection URL."`
-	Migrate                  bool      `name:"migrate" env:"WAYPOINT_MIGRATE" help:"Run database migrations on startup."`
-	WorkspaceCleanupInterval string    `name:"workspace-cleanup-interval" default:"300s" env:"WAYPOINT_WORKSPACE_CLEANUP_INTERVAL" help:"Interval for cleaning up stale workspaces. Fractional values are supported. Must contain a unit suffix (e.g. 's' for seconds)"`
-	JWT                      JWTConfig `embed:"" prefix:"jwt." envprefix:"WAYPOINT_JWT_"`
+	Port        int       `name:"port" default:"8080" env:"WAYPOINT_HTTP_PORT" required:"" help:"HTTP listen port."`
+	DatabaseURL string    `name:"database-url" env:"WAYPOINT_DATABASE_URL" required:"" help:"PostgreSQL connection URL."`
+	Migrate     bool      `name:"migrate" env:"WAYPOINT_MIGRATE" help:"Run database migrations on startup."`
+	JWT         JWTConfig `embed:"" prefix:"jwt." envprefix:"WAYPOINT_JWT_"`
 }
 
 // JWTConfig contains configuration parameters for JSON Web Token
@@ -74,14 +72,6 @@ func parseConfig(cmd *ServeCommand) (*waypoint.Config, error) {
 		return nil, fmt.Errorf("JWT audience is required")
 	}
 
-	WorkspaceCleanupInterval, err := time.ParseDuration(cmd.WorkspaceCleanupInterval)
-	if err != nil {
-		return nil, fmt.Errorf("parse workspace cleanup interval: %w", err)
-	}
-	if WorkspaceCleanupInterval <= 0 {
-		return nil, fmt.Errorf("workspace cleanup interval must be positive")
-	}
-
 	return &waypoint.Config{
 		Port:        cmd.Port,
 		DatabaseURL: cmd.DatabaseURL,
@@ -90,6 +80,5 @@ func parseConfig(cmd *ServeCommand) (*waypoint.Config, error) {
 			Issuer:   cmd.JWT.Issuer,
 			Audience: cmd.JWT.Audience,
 		},
-		WorkspaceCleanupInterval: WorkspaceCleanupInterval,
 	}, nil
 }

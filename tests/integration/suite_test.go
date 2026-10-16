@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 	"github.com/waypoint-group/waypoint-be/tests/testlib"
@@ -36,8 +35,7 @@ func newWaypoint(t *testing.T) *testlib.TestWaypoint {
 	cfg := waypoint.Config{
 		JWT: testEnv.Keycloak().JWTConfig,
 		// Always migrate in tests.
-		Migrate:                  true,
-		WorkspaceCleanupInterval: time.Minute,
+		Migrate: true,
 	}
 
 	w, err := testEnv.CreateWaypointInstance(&cfg)

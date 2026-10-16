@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
@@ -15,32 +14,19 @@ import (
 )
 
 // Service manages workspaces and workspace membership.
+//
+// Every workspace has exactly one owner and therefore at least one member.
+// This invariant is preserved by the following rules:
+//   - Workspace creation adds the owner atomically
+//   - Workspace owners cannot be removed from the workspace
+//   - Deleting the owner's account deletes their workspaces atomically
 type Service struct {
-	database      *db.Database
-	cleanupCancel context.CancelFunc
-	cleanupDone   chan struct{}
+	database *db.Database
 }
 
-// NewService constructs a workspace service and starts periodic workspace cleanup.
-func NewService(database *db.Database, cleanupInterval time.Duration) *Service {
-	ctx, cancel := context.WithCancel(context.Background())
-	service := &Service{
-		database:      database,
-		cleanupCancel: cancel,
-		cleanupDone:   make(chan struct{}),
-	}
-	go func() {
-		defer close(service.cleanupDone)
-		service.runWorkspaceCleanup(ctx, cleanupInterval)
-	}()
-	return service
-}
-
-// Close cancels cleanup and waits for in-flight work to release its connection.
-// It is safe to call repeatedly; the database remains caller-owned.
-func (s *Service) Close() {
-	s.cleanupCancel()
-	<-s.cleanupDone
+// NewService constructs a workspace service.
+func NewService(database *db.Database) *Service {
+	return &Service{database: database}
 }
 
 // CreateWorkspace atomically creates a workspace and its owner membership.

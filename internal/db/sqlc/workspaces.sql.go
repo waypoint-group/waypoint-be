@@ -53,21 +53,6 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 	return i, err
 }
 
-const deleteEmptyWorkspaces = `-- name: DeleteEmptyWorkspaces :execrows
-DELETE FROM workspaces
-WHERE id = ANY($1::uuid[])
-  AND NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = workspaces.id)
-`
-
-// Run after LockEmptyWorkspaces, in a separate statement to recheck membership.
-func (q *Queries) DeleteEmptyWorkspaces(ctx context.Context, workspaceIds []uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteEmptyWorkspaces, workspaceIds)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const deleteWorkspace = `-- name: DeleteWorkspace :exec
 DELETE FROM workspaces
 WHERE id = $1
@@ -142,35 +127,6 @@ func (q *Queries) ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUI
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const lockEmptyWorkspaces = `-- name: LockEmptyWorkspaces :many
-SELECT id FROM workspaces
-WHERE NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = workspaces.id)
-ORDER BY id
-LIMIT 100
-FOR UPDATE SKIP LOCKED
-`
-
-// Lock a bounded batch without waiting for active workspace operations or other cleaners.
-func (q *Queries) LockEmptyWorkspaces(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, lockEmptyWorkspaces)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

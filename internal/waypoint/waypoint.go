@@ -49,6 +49,5 @@ func New(cfg *Config) (*Waypoint, error) {
 }
 
 func (w *Waypoint) Close() {
-	w.Services.Close()
 	w.Database.Close()
 }
