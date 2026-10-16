@@ -111,7 +111,7 @@ func (s *Service) ReadUser(ctx context.Context, id uuid.UUID) (*User, error) {
 }
 
 // ReadUserProfile retrieves a registered user profile matching both the identity
-// issuer and subject, with workspace memberships ordered by workspace ID.
+// issuer and subject.
 func (s *Service) ReadUserProfile(ctx context.Context, issuer, subject string) (*UserProfile, error) {
 	user, err := s.ReadUserByIdentity(ctx, issuer, subject)
 	if err != nil {
