@@ -178,13 +178,25 @@ func (s *Service) DeleteUser(ctx context.Context, input DeleteUserInput) (delete
 		}
 	}()
 
+	// Lock before deleting workspaces owned by user so concurrent operations
+	// do not add new user-owned workspaces which would be bypassed by the
+	// deletion.
+	userRow, err := tx.LockUserRow(ctx, input.UserID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+
+		return fmt.Errorf("lock user: %w", err)
+	}
+
 	// Delete workspaces owned by the user...
-	err = tx.DeleteWorkspacesOwnedByUser(ctx, input.UserID)
+	err = tx.DeleteWorkspacesOwnedByUser(ctx, userRow.ID)
 	if err != nil {
 		return fmt.Errorf("delete workspaces owned by user: %w", err)
 	}
 	// ...and the user themselves.
-	err = tx.DeleteUser(ctx, input.UserID)
+	err = tx.DeleteUser(ctx, userRow.ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound

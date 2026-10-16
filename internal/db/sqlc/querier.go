@@ -38,6 +38,10 @@ type Querier interface {
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceMember, error)
 	// Lock a bounded batch without waiting for active workspace operations or other cleaners.
 	LockEmptyWorkspaces(ctx context.Context) ([]uuid.UUID, error)
+	// Serialize user operations through their shared parent row.
+	// The lock lasts until the surrounding transaction commits or rolls back.
+	//
+	LockUserRow(ctx context.Context, id uuid.UUID) (User, error)
 	// Serialize workspace operations through their shared parent row.
 	// The lock lasts until the surrounding transaction commits or rolls back.
 	//

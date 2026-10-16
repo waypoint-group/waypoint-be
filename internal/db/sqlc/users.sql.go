@@ -84,6 +84,25 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const lockUserRow = `-- name: LockUserRow :one
+SELECT id, email, user_name, display_name, created_at FROM users WHERE id = $1 FOR UPDATE
+`
+
+// Serialize user operations through their shared parent row.
+// The lock lasts until the surrounding transaction commits or rolls back.
+func (q *Queries) LockUserRow(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, lockUserRow, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.UserName,
+		&i.DisplayName,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const selectUser = `-- name: SelectUser :one
 SELECT id, email, user_name, display_name, created_at
 FROM users

@@ -22,3 +22,9 @@ ORDER BY id;
 -- name: DeleteUser :exec
 DELETE FROM users
 WHERE id = $1;
+
+-- Serialize user operations through their shared parent row.
+-- The lock lasts until the surrounding transaction commits or rolls back.
+--
+-- name: LockUserRow :one
+SELECT * FROM users WHERE id = $1 FOR UPDATE;
