@@ -119,8 +119,10 @@ type MeWorkspaceMembership struct {
 	WorkspaceName string `json:"workspace_name"`
 }
 
-// DeleteUserInput contains input for user deletion.
+// DeleteUserInput identifies the account to delete and the authenticated caller.
 type DeleteUserInput struct {
-	UserID  uuid.UUID
+	// UserID identifies the local account to delete.
+	UserID uuid.UUID
+	// ActorID is resolved from the verified identity and must equal UserID.
 	ActorID uuid.UUID
 }

@@ -53,14 +53,17 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 	return i, err
 }
 
-const deleteWorkspace = `-- name: DeleteWorkspace :exec
+const deleteWorkspace = `-- name: DeleteWorkspace :execrows
 DELETE FROM workspaces
 WHERE id = $1
 `
 
-func (q *Queries) DeleteWorkspace(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteWorkspace, id)
-	return err
+func (q *Queries) DeleteWorkspace(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspace, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteWorkspacesOwnedByUser = `-- name: DeleteWorkspacesOwnedByUser :exec
@@ -71,6 +74,8 @@ WHERE m.workspace_id = w.id
   AND m.role = 'owner'
 `
 
+// DeleteWorkspacesOwnedByUser removes all workspaces where the user is the owner.
+// Lock the user row first to exclude concurrent ownership creation during account deletion.
 func (q *Queries) DeleteWorkspacesOwnedByUser(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteWorkspacesOwnedByUser, userID)
 	return err
@@ -147,7 +152,7 @@ func (q *Queries) LockWorkspaceRow(ctx context.Context, id uuid.UUID) (Workspace
 	return i, err
 }
 
-const removeWorkspaceMember = `-- name: RemoveWorkspaceMember :exec
+const removeWorkspaceMember = `-- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2
 `
@@ -157,9 +162,12 @@ type RemoveWorkspaceMemberParams struct {
 	UserID      uuid.UUID
 }
 
-func (q *Queries) RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error {
-	_, err := q.db.Exec(ctx, removeWorkspaceMember, arg.WorkspaceID, arg.UserID)
-	return err
+func (q *Queries) RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeWorkspaceMember, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const selectWorkspace = `-- name: SelectWorkspace :one

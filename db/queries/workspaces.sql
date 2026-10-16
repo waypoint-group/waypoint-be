@@ -26,14 +26,16 @@ SELECT *
 FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2;
 
--- name: RemoveWorkspaceMember :exec
+-- name: RemoveWorkspaceMember :execrows
 DELETE FROM workspace_members
 WHERE workspace_id = $1 AND user_id = $2;
 
--- name: DeleteWorkspace :exec
+-- name: DeleteWorkspace :execrows
 DELETE FROM workspaces
 WHERE id = $1;
 
+-- DeleteWorkspacesOwnedByUser removes all workspaces where the user is the owner.
+-- Lock the user row first to exclude concurrent ownership creation during account deletion.
 -- name: DeleteWorkspacesOwnedByUser :exec
 DELETE FROM workspaces AS w
 USING workspace_members AS m

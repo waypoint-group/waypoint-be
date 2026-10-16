@@ -52,14 +52,17 @@ func (q *Queries) CreateChannel(ctx context.Context, arg CreateChannelParams) (C
 	return i, err
 }
 
-const deleteChannel = `-- name: DeleteChannel :exec
+const deleteChannel = `-- name: DeleteChannel :execrows
 DELETE FROM channels
 WHERE id = $1
 `
 
-func (q *Queries) DeleteChannel(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteChannel, id)
-	return err
+func (q *Queries) DeleteChannel(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteChannel, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const listWorkspaceChannels = `-- name: ListWorkspaceChannels :many

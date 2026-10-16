@@ -103,7 +103,7 @@ func (s *Service) ReadWorkspace(
 	// concurrent additions, removals, and workspace deletion.
 	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
+		return nil, ErrWorkspaceNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("lock workspace: %w", err)
@@ -157,7 +157,7 @@ func (s *Service) AddWorkspaceMember(
 	// invalidate the permission or membership checks before commit.
 	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
+		return nil, ErrWorkspaceNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("lock workspace: %w", err)
@@ -234,7 +234,7 @@ func (s *Service) RemoveWorkspaceMember(
 	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
+			return ErrWorkspaceNotFound
 		}
 
 		return fmt.Errorf("lock workspace: %w", err)
@@ -262,17 +262,17 @@ func (s *Service) RemoveWorkspaceMember(
 		return ErrOwnerRemoval
 	}
 	// Remove the workspace member.
-	err = tx.RemoveWorkspaceMember(
+	removed, err := tx.RemoveWorkspaceMember(
 		ctx,
 		sqlc.RemoveWorkspaceMemberParams{
 			WorkspaceID: wsRow.ID, UserID: input.UserID,
 		},
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
 		return fmt.Errorf("remove workspace member: %w", err)
+	}
+	if removed == 0 {
+		return ErrWorkspaceMemberNotFound
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -282,9 +282,9 @@ func (s *Service) RemoveWorkspaceMember(
 	return nil
 }
 
-// DeleteWorkspace allows the owner to delete a workspace.
+// DeleteWorkspace allows the owner to delete a workspace, even when other members remain.
 //
-// Channels and messages are deleted by the database's cascading foreign keys.
+// Memberships, channels, and channel messages are deleted by cascading foreign keys.
 func (s *Service) DeleteWorkspace(
 	ctx context.Context,
 	input DeleteWorkspaceInput,
@@ -308,7 +308,7 @@ func (s *Service) DeleteWorkspace(
 	wsRow, err := tx.LockWorkspaceRow(ctx, input.WorkspaceID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
+			return ErrWorkspaceNotFound
 		}
 
 		return fmt.Errorf("lock workspace: %w", err)
@@ -326,8 +326,12 @@ func (s *Service) DeleteWorkspace(
 		return ErrForbidden
 	}
 	// Delete the workspace.
-	if err := tx.DeleteWorkspace(ctx, wsRow.ID); err != nil {
+	removed, err := tx.DeleteWorkspace(ctx, wsRow.ID)
+	if err != nil {
 		return fmt.Errorf("delete workspace: %w", err)
+	}
+	if removed == 0 {
+		return ErrWorkspaceNotFound
 	}
 
 	if err := tx.Commit(ctx); err != nil {

@@ -18,6 +18,7 @@ import (
 type Waypoint struct {
 	// Database is the application's PostgreSQL database connection.
 	Database *db.Database
+	// Services exposes the application's domain operations.
 	Services *Services
 	// Handler serves the application's HTTP API.
 	Handler http.Handler
@@ -48,6 +49,7 @@ func New(cfg *Config) (*Waypoint, error) {
 	}, nil
 }
 
+// Close releases the application's database pool after request handling has stopped.
 func (w *Waypoint) Close() {
 	w.Database.Close()
 }

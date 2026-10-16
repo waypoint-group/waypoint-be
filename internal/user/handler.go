@@ -9,7 +9,7 @@ import (
 	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
-// Handler serves user profiles and registration over HTTP.
+// Handler serves user profiles, registration, and account deletion over HTTP.
 type Handler struct {
 	service   *Service
 	jwtConfig middleware.JWTConfig
@@ -160,7 +160,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeleteUser
+// DeleteUser deletes the authenticated user's local account and owned workspaces.
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	actorID, ok := h.service.GetActorID(w, r, h.jwtConfig)
 	if !ok {
@@ -181,16 +181,17 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // writeError maps domain sentinels to HTTP statuses and hides unexpected causes.
 func writeError(w http.ResponseWriter, err error) {
 	status, public := http.StatusInternalServerError, "internal server error"
 	switch {
-	case errors.Is(err, ErrNotFound):
-		status, public = http.StatusNotFound, err.Error()
 	case errors.Is(err, ErrForbidden):
 		status, public = http.StatusForbidden, err.Error()
+	case errors.Is(err, ErrNotFound):
+		status, public = http.StatusNotFound, err.Error()
 	case errors.Is(err, ErrEmailTaken), errors.Is(err, ErrUserNameTaken), errors.Is(err, ErrIdentityTaken):
 		status, public = http.StatusConflict, err.Error()
 	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity), errors.Is(err, ErrInvalidId):

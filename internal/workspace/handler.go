@@ -127,7 +127,8 @@ func (h *Handler) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// DeleteWorkspace deletes a workspace when the authenticated owner is its only member.
+// DeleteWorkspace deletes a workspace and its contents for its authenticated owner,
+// even when other members remain.
 func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
 	if !ok {
@@ -151,16 +152,16 @@ func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
 func writeError(w http.ResponseWriter, err error) {
 	status, public := http.StatusInternalServerError, "internal server error"
 	switch {
+	case errors.Is(err, ErrForbidden):
+		status, public = http.StatusForbidden, ErrForbidden.Error()
 	case errors.Is(err, ErrInvalidID):
 		status, public = http.StatusBadRequest, ErrInvalidID.Error()
 	case errors.Is(err, ErrInvalidName):
 		status, public = http.StatusBadRequest, ErrInvalidName.Error()
-	case errors.Is(err, ErrForbidden):
-		status, public = http.StatusForbidden, ErrForbidden.Error()
-	case errors.Is(err, ErrNotFound):
-		status, public = http.StatusNotFound, ErrNotFound.Error()
-	case errors.Is(err, ErrMemberNotFound):
-		status, public = http.StatusNotFound, ErrMemberNotFound.Error()
+	case errors.Is(err, ErrWorkspaceNotFound):
+		status, public = http.StatusNotFound, ErrWorkspaceNotFound.Error()
+	case errors.Is(err, ErrWorkspaceMemberNotFound):
+		status, public = http.StatusNotFound, ErrWorkspaceMemberNotFound.Error()
 	case errors.Is(err, ErrUserNotFound):
 		status, public = http.StatusNotFound, ErrUserNotFound.Error()
 	case errors.Is(err, ErrAlreadyMember):

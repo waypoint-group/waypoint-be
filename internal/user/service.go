@@ -1,3 +1,4 @@
+// Package user manages local accounts and their external identity mappings.
 package user
 
 import (
@@ -16,7 +17,7 @@ import (
 	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
-// Service manages user registration and profile retrieval.
+// Service manages user registration, profile retrieval, and account deletion.
 type Service struct {
 	database *db.Database
 }
@@ -110,7 +111,7 @@ func (s *Service) ReadUser(ctx context.Context, id uuid.UUID) (*User, error) {
 }
 
 // ReadUserProfile retrieves a registered user profile matching both the identity
-// issuer and subject.
+// issuer and subject, with workspace memberships ordered by workspace ID.
 func (s *Service) ReadUserProfile(ctx context.Context, issuer, subject string) (*UserProfile, error) {
 	user, err := s.ReadUserByIdentity(ctx, issuer, subject)
 	if err != nil {
@@ -159,7 +160,7 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 	return result, nil
 }
 
-// DeleteUser
+// DeleteUser allows an actor to delete only their own local account.
 func (s *Service) DeleteUser(ctx context.Context, input DeleteUserInput) (deleteUserError error) {
 	if input.ActorID != input.UserID {
 		return ErrForbidden
@@ -196,12 +197,12 @@ func (s *Service) DeleteUser(ctx context.Context, input DeleteUserInput) (delete
 		return fmt.Errorf("delete workspaces owned by user: %w", err)
 	}
 	// ...and the user themselves.
-	err = tx.DeleteUser(ctx, userRow.ID)
+	removed, err := tx.DeleteUser(ctx, userRow.ID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
 		return fmt.Errorf("delete user: %w", err)
+	}
+	if removed == 0 {
+		return ErrNotFound
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -211,7 +212,7 @@ func (s *Service) DeleteUser(ctx context.Context, input DeleteUserInput) (delete
 	return nil
 }
 
-// GetActorID derives authority from the verified token.
+// GetActorID validates the request's bearer token and resolves its local user ID.
 func (s *Service) GetActorID(w http.ResponseWriter, r *http.Request, jwtConfig middleware.JWTConfig) (uuid.UUID, bool) {
 	_, claims, err := middleware.ExtractAndValidateJWT(r, jwtConfig)
 	if err != nil {

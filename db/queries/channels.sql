@@ -19,6 +19,6 @@ INSERT INTO channel_members (workspace_id, channel_id, user_id)
 VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING;
 
--- name: DeleteChannel :exec
+-- name: DeleteChannel :execrows
 DELETE FROM channels
 WHERE id = $1;
