@@ -21,16 +21,24 @@ func newRouter(database *db.Database, services *Services, cfg *Config) *http.Ser
 
 	// Users
 	userH := user.NewHandler(services.Users, cfg.JWT)
-	mux.Handle("POST /users", http.MaxBytesHandler(http.HandlerFunc(userH.CreateUser), maxRequestBodyBytes))
+	mux.Handle(
+		"POST /users",
+		http.MaxBytesHandler(http.HandlerFunc(userH.CreateUser), maxRequestBodyBytes),
+	)
 	// TODO: ListUsers should be admin only.
 	mux.HandleFunc("GET /users", userH.ListUsers)
 	mux.HandleFunc("GET /users/{id}", userH.GetUser)
+	mux.HandleFunc("DELETE /users/{id}", userH.DeleteUser)
+
+	// User profile
 	mux.HandleFunc("GET /me", userH.Me)
-	mux.Handle("DELETE /users/{id}", http.HandlerFunc(userH.DeleteUser))
 
 	// Workspaces
 	workspaceH := workspace.NewHandler(services.Workspaces, services.Users, cfg.JWT)
-	mux.Handle("POST /workspaces", http.MaxBytesHandler(http.HandlerFunc(workspaceH.CreateWorkspace), maxRequestBodyBytes))
+	mux.Handle(
+		"POST /workspaces",
+		http.MaxBytesHandler(http.HandlerFunc(workspaceH.CreateWorkspace), maxRequestBodyBytes),
+	)
 	mux.HandleFunc("GET /workspaces/{workspace_id}", workspaceH.GetWorkspace)
 	mux.HandleFunc("POST /workspaces/{workspace_id}/users/{user_id}", workspaceH.AddWorkspaceMember)
 	mux.HandleFunc("DELETE /workspaces/{workspace_id}/users/{user_id}", workspaceH.RemoveWorkspaceMember)
