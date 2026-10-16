@@ -189,6 +189,8 @@ func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		status, public = http.StatusNotFound, err.Error()
+	case errors.Is(err, ErrForbidden):
+		status, public = http.StatusForbidden, err.Error()
 	case errors.Is(err, ErrEmailTaken), errors.Is(err, ErrUserNameTaken), errors.Is(err, ErrIdentityTaken):
 		status, public = http.StatusConflict, err.Error()
 	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity), errors.Is(err, ErrInvalidId):

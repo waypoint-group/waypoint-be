@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrNotFound           = errors.New("user not found")
+	ErrForbidden          = errors.New("insufficient user permissions")
 	ErrUserNameTaken      = errors.New("user name already in use")
 	ErrEmailTaken         = errors.New("email already in use")
 	ErrIdentityTaken      = errors.New("user identity already in use")
@@ -12,5 +13,4 @@ var (
 	ErrInvalidEmail       = errors.New("invalid email")
 	ErrInvalidDisplayName = errors.New("invalid display name")
 	ErrInvalidIdentity    = errors.New("identity issuer and subject are required")
-	ErrForbidden          = errors.New("insufficient user permissions")
 )
