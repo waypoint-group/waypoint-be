@@ -66,7 +66,6 @@ func TestWorkspaces_Lifecycle(t *testing.T) {
 	}
 
 	workspaceRequest(t, uut, ownerToken, http.MethodPost, membershipPath, "", http.StatusConflict, workspaceapi.ErrAlreadyMember)
-	workspaceRequest(t, uut, ownerToken, http.MethodDelete, path, "", http.StatusConflict, workspaceapi.ErrWorkspaceNotEmpty)
 	workspaceRequest(t, uut, memberToken, http.MethodDelete, path, "", http.StatusForbidden, workspaceapi.ErrForbidden)
 	workspaceRequest(t, uut, memberToken, http.MethodDelete, membershipPath, "", http.StatusForbidden, workspaceapi.ErrForbidden)
 	workspaceRequest(t, uut, memberToken, http.MethodPost, path+"/users/"+owner.ID, "", http.StatusForbidden, workspaceapi.ErrForbidden)

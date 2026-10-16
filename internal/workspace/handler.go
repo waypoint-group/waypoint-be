@@ -167,8 +167,6 @@ func writeError(w http.ResponseWriter, err error) {
 		status, public = http.StatusConflict, ErrAlreadyMember.Error()
 	case errors.Is(err, ErrOwnerRemoval):
 		status, public = http.StatusConflict, ErrOwnerRemoval.Error()
-	case errors.Is(err, ErrWorkspaceNotEmpty):
-		status, public = http.StatusConflict, ErrWorkspaceNotEmpty.Error()
 	}
 	if status == http.StatusInternalServerError {
 		log.Printf("workspace error: %v", err)

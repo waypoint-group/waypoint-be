@@ -253,7 +253,7 @@ func (s *Service) RemoveWorkspaceMember(
 
 		return fmt.Errorf("lock workspace: %w", err)
 	}
-
+	// Make sure action was performed by the owner.
 	actor, err := tx.SelectWorkspaceMember(
 		ctx,
 		sqlc.SelectWorkspaceMemberParams{
@@ -270,24 +270,12 @@ func (s *Service) RemoveWorkspaceMember(
 	if actor.Role != string(WorkspaceRoleOwner) {
 		return ErrForbidden
 	}
+	// Prevent the owner from removing themselves, which would invalidate
+	// the "a workspace always has at least one member (the owner) contract".
 	if input.UserID == input.ActorID {
 		return ErrOwnerRemoval
 	}
-
-	_, err = tx.SelectWorkspaceMember(
-		ctx,
-		sqlc.SelectWorkspaceMemberParams{
-			WorkspaceID: row.ID, UserID: input.UserID,
-		},
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrMemberNotFound
-		}
-
-		return fmt.Errorf("read target membership: %w", err)
-	}
-
+	// Remove the workspace member.
 	err = tx.RemoveWorkspaceMember(
 		ctx,
 		sqlc.RemoveWorkspaceMemberParams{
@@ -295,6 +283,9 @@ func (s *Service) RemoveWorkspaceMember(
 		},
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
 		return fmt.Errorf("remove workspace member: %w", err)
 	}
 
@@ -305,7 +296,8 @@ func (s *Service) RemoveWorkspaceMember(
 	return nil
 }
 
-// DeleteWorkspace allows the owner to delete a workspace once no other members remain.
+// DeleteWorkspace allows the owner to delete a workspace.
+//
 // Channels and messages are deleted by the database's cascading foreign keys.
 func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInput) (resultErr error) {
 	if input.WorkspaceID == (uuid.UUID{}) || input.ActorID == (uuid.UUID{}) {
@@ -332,7 +324,7 @@ func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInpu
 
 		return fmt.Errorf("lock workspace: %w", err)
 	}
-
+	// Make sure action was performed by the owner.
 	actor, err := tx.SelectWorkspaceMember(ctx, sqlc.SelectWorkspaceMemberParams{WorkspaceID: row.ID, UserID: input.ActorID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -344,15 +336,7 @@ func (s *Service) DeleteWorkspace(ctx context.Context, input DeleteWorkspaceInpu
 	if actor.Role != string(WorkspaceRoleOwner) {
 		return ErrForbidden
 	}
-
-	members, err := tx.ListWorkspaceMembers(ctx, row.ID)
-	if err != nil {
-		return fmt.Errorf("list workspace members: %w", err)
-	}
-	if len(members) != 1 {
-		return ErrWorkspaceNotEmpty
-	}
-
+	// Delete the workspace.
 	if err := tx.DeleteWorkspace(ctx, row.ID); err != nil {
 		return fmt.Errorf("delete workspace: %w", err)
 	}
