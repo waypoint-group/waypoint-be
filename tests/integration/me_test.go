@@ -11,81 +11,89 @@ import (
 	userapi "github.com/waypoint-group/waypoint-be/internal/user"
 )
 
-func TestMe(t *testing.T) {
+func TestMe_Valid(t *testing.T) {
 	uut := newWaypoint(t)
-
 	created := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
-
-	for _, tc := range []struct {
-		name     string
-		username string
-		status   int
-	}{
-		{"valid", "ada", http.StatusOK},
-		{"unknown identity", "missing", http.StatusNotFound},
-		// TODO: Linking accounts not implemented yet.
-		//
-		// {"linked account", "linked-ada", "requires an HTTP endpoint to link another identity to the registered user", http.StatusOK},
-		// {"identity belongs to another issuer", "other-realm-only", "requires HTTP setup for an identity linked under another issuer", http.StatusNotFound},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			token, err := testEnv.Keycloak().AccessToken(t.Context(), tc.username, "test-password")
-			if err != nil {
-				t.Fatalf("log into Keycloak: %v", err)
-			}
-
-			response, err := uut.RequestWithAccessToken(t.Context(), http.MethodGet, "/me", nil, token)
-			if err != nil {
-				t.Fatalf("request /me: %v", err)
-			}
-			defer func() { _ = response.Body.Close() }()
-
-			if response.StatusCode != tc.status {
-				body, err := io.ReadAll(response.Body)
-				if err == nil {
-					t.Logf("response body: %s", string(body))
-				}
-				t.Fatalf("expected status %d, got %d", tc.status, response.StatusCode)
-			}
-
-			if tc.status == http.StatusOK {
-				var me userapi.MeResponse
-				if err := json.NewDecoder(response.Body).Decode(&me); err != nil {
-					t.Fatalf("decode profile: %v", err)
-				}
-
-				same := me.User.ID == created.ID &&
-					me.User.Email == created.Email &&
-					me.User.UserName == created.UserName &&
-					me.User.DisplayName == created.DisplayName &&
-					me.User.CreatedAt.Equal(created.CreatedAt)
-				if !same {
-					t.Errorf("expected profile %+v, got %+v", created, me)
-				}
-			}
-		})
+	token, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "test-password")
+	if err != nil {
+		t.Fatalf("log into Keycloak: %v", err)
 	}
 
-	t.Run("missing authorization", func(t *testing.T) {
-		response, err := uut.Request(t.Context(), http.MethodGet, "/me", nil)
-		if err != nil {
-			t.Fatalf("request /me: %v", err)
-		}
-		defer func() { _ = response.Body.Close() }()
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodGet, "/me", nil, token)
+	if err != nil {
+		t.Fatalf("request /me: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
 
-		if response.StatusCode != http.StatusUnauthorized {
-			body, err := io.ReadAll(response.Body)
-			if err == nil {
-				t.Logf("response body: %s", string(body))
-			}
-			t.Errorf("expected status 401, got %d", response.StatusCode)
-		}
-	})
-
-	t.Run("incorrect password", func(t *testing.T) {
-		_, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "wrong-password")
+	if response.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(response.Body)
 		if err == nil {
-			t.Fatal("expected Keycloak to reject incorrect password")
+			t.Logf("response body: %s", string(body))
 		}
-	})
+		t.Fatalf("expected status %d, got %d", http.StatusOK, response.StatusCode)
+	}
+
+	var me userapi.MeResponse
+	if err := json.NewDecoder(response.Body).Decode(&me); err != nil {
+		t.Fatalf("decode profile: %v", err)
+	}
+
+	same := me.User.ID == created.ID &&
+		me.User.Email == created.Email &&
+		me.User.UserName == created.UserName &&
+		me.User.DisplayName == created.DisplayName &&
+		me.User.CreatedAt.Equal(created.CreatedAt)
+	if !same {
+		t.Errorf("expected profile %+v, got %+v", created, me)
+	}
 }
+
+func TestMe_UnknownIdentity(t *testing.T) {
+	uut := newWaypoint(t)
+	createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
+	token, err := testEnv.Keycloak().AccessToken(t.Context(), "missing", "test-password")
+	if err != nil {
+		t.Fatalf("log into Keycloak: %v", err)
+	}
+
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodGet, "/me", nil, token)
+	if err != nil {
+		t.Fatalf("request /me: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	if response.StatusCode != http.StatusNotFound {
+		body, err := io.ReadAll(response.Body)
+		if err == nil {
+			t.Logf("response body: %s", string(body))
+		}
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, response.StatusCode)
+	}
+
+}
+
+func TestMe_MissingAuthorization(t *testing.T) {
+	uut := newWaypoint(t)
+	response, err := uut.Request(t.Context(), http.MethodGet, "/me", nil)
+	if err != nil {
+		t.Fatalf("request /me: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	if response.StatusCode != http.StatusUnauthorized {
+		body, err := io.ReadAll(response.Body)
+		if err == nil {
+			t.Logf("response body: %s", string(body))
+		}
+		t.Errorf("expected status 401, got %d", response.StatusCode)
+	}
+}
+
+func TestMe_IncorrectPassword(t *testing.T) {
+	_, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "wrong-password")
+	if err == nil {
+		t.Fatal("expected Keycloak to reject incorrect password")
+	}
+}
+
+// TODO: Add linked-account and different-issuer cases when account linking is implemented.
