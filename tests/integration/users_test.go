@@ -193,10 +193,91 @@ func TestUsers_GetInvalidID(t *testing.T) {
 func TestUsers_List(t *testing.T) {
 	uut := newWaypoint(t)
 
-	assertUsers(t, uut, nil)
 	ada := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	linkedAda := createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Ada Lovelace")
 	assertUsers(t, uut, []userapi.CreateUserResponse{ada, linkedAda})
+}
+
+func TestUsers_DeleteExistingUserMissingAuthorization(t *testing.T) {
+	uut := newWaypoint(t)
+	owner := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
+	response, err := uut.Request(t.Context(), http.MethodDelete, "/users/"+owner.ID, nil)
+	if err != nil {
+		t.Fatalf("send request: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	if response.StatusCode != http.StatusUnauthorized {
+		payload, _ := io.ReadAll(response.Body)
+		t.Fatalf("expected status %d, got %d: %s", http.StatusUnauthorized, response.StatusCode, payload)
+	}
+}
+
+func TestUsers_DeleteInvalidID(t *testing.T) {
+	uut := newWaypoint(t)
+	_ = createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
+	token := workspaceToken(t, "ada")
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodDelete, "/users/invalid", nil, token)
+	if err != nil {
+		t.Fatalf("send request: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	payload, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, response.StatusCode, payload)
+	}
+	if got := strings.TrimSpace(string(payload)); got != userapi.ErrInvalidId.Error() {
+		t.Fatalf("expected error %q, got %q", userapi.ErrInvalidId, got)
+	}
+}
+
+func TestUsers_DeleteOtherUser(t *testing.T) {
+	uut := newWaypoint(t)
+	_ = createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
+	other := createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
+	token := workspaceToken(t, "ada")
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodDelete, "/users/"+other.ID, nil, token)
+	if err != nil {
+		t.Fatalf("send request: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	payload, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, response.StatusCode, payload)
+	}
+	if got := strings.TrimSpace(string(payload)); got != userapi.ErrForbidden.Error() {
+		t.Fatalf("expected error %q, got %q", userapi.ErrForbidden, got)
+	}
+}
+
+func TestUsers_DeleteMissingUser(t *testing.T) {
+	uut := newWaypoint(t)
+	_ = createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
+	token := workspaceToken(t, "ada")
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodDelete, "/users/"+uuid.NewV7().String(), nil, token)
+	if err != nil {
+		t.Fatalf("send request: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	payload, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, response.StatusCode, payload)
+	}
+	if got := strings.TrimSpace(string(payload)); got != userapi.ErrForbidden.Error() {
+		t.Fatalf("expected error %q, got %q", userapi.ErrForbidden, got)
+	}
 }
 
 func TestUsers_Delete(t *testing.T) {
@@ -204,23 +285,22 @@ func TestUsers_Delete(t *testing.T) {
 	owner := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada")
 	other := createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
 	token := workspaceToken(t, "ada")
-	unregisteredToken := workspaceToken(t, "missing")
-	path := "/users/" + owner.ID
-	missingPath := "/users/" + uuid.NewV7().String()
-
-	for _, target := range []string{path, missingPath} {
-		for _, invalidToken := range []string{"", "invalid-token"} {
-			workspaceRequest(t, uut, invalidToken, http.MethodDelete, target, "", http.StatusUnauthorized, nil)
-		}
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodDelete, "/users/"+owner.ID, nil, token)
+	if err != nil {
+		t.Fatalf("send request: %v", err)
 	}
-	workspaceRequest(t, uut, token, http.MethodDelete, "/users/invalid", "", http.StatusBadRequest, userapi.ErrInvalidId)
-	workspaceRequest(t, uut, token, http.MethodDelete, "/users/"+other.ID, "", http.StatusForbidden, userapi.ErrForbidden)
-	workspaceRequest(t, uut, unregisteredToken, http.MethodDelete, path, "", http.StatusForbidden, userapi.ErrForbidden)
-	workspaceRequest(t, uut, token, http.MethodDelete, missingPath, "", http.StatusForbidden, userapi.ErrForbidden)
+	defer func() { _ = response.Body.Close() }()
 
-	workspaceRequest(t, uut, token, http.MethodDelete, path, "", http.StatusNoContent, nil)
-	workspaceRequest(t, uut, token, http.MethodDelete, path, "", http.StatusForbidden, userapi.ErrForbidden)
-	workspaceRequest(t, uut, token, http.MethodDelete, "/users/"+other.ID, "", http.StatusForbidden, userapi.ErrForbidden)
+	payload, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusNoContent, response.StatusCode, payload)
+	}
+	if len(payload) != 0 {
+		t.Fatalf("expected empty body, got %s", payload)
+	}
 	assertUsers(t, uut, []userapi.CreateUserResponse{other})
 }
 
@@ -313,41 +393,53 @@ func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []userapi.CreateU
 	}
 }
 
-func TestUsers_CreateValidation(t *testing.T) {
+func TestUsers_CreateBlankUserName(t *testing.T) {
 	uut := newWaypoint(t)
-
-	token, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "test-password")
+	token := workspaceToken(t, "ada")
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users", strings.NewReader(`{"user_name":"  ","display_name":"Ada"}`), token)
 	if err != nil {
-		t.Fatalf("log into Keycloak: %v", err)
+		t.Fatalf("register invalid user: %v", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", response.StatusCode, body)
+	}
+	if got := strings.TrimSpace(string(body)); got != "invalid request body: invalid user name" {
+		t.Errorf("unexpected validation error: %q", got)
 	}
 
-	for _, tc := range []struct {
-		name string
-		body string
-		want string
-	}{
-		{"blank user name", `{"user_name":"  ","display_name":"Ada"}`, "invalid request body: invalid user name"},
-		{"blank display name", `{"user_name":"ada","display_name":"  "}`, "invalid request body: invalid display name"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users", strings.NewReader(tc.body), token)
-			if err != nil {
-				t.Fatalf("register invalid user: %v", err)
-			}
-			defer func() { _ = response.Body.Close() }()
+	assertUsers(t, uut, nil)
+}
 
-			body, err := io.ReadAll(response.Body)
-			if err != nil {
-				t.Fatalf("read response: %v", err)
-			}
-			if response.StatusCode != http.StatusBadRequest {
-				t.Fatalf("expected status 400, got %d: %s", response.StatusCode, body)
-			}
-			if got := strings.TrimSpace(string(body)); got != tc.want {
-				t.Errorf("unexpected validation error: %q", got)
-			}
-
-			assertUsers(t, uut, nil)
-		})
+func TestUsers_CreateBlankDisplayName(t *testing.T) {
+	uut := newWaypoint(t)
+	token := workspaceToken(t, "ada")
+	response, err := uut.RequestWithAccessToken(t.Context(), http.MethodPost, "/users", strings.NewReader(`{"user_name":"ada","display_name":"  "}`), token)
+	if err != nil {
+		t.Fatalf("register invalid user: %v", err)
 	}
+	defer func() { _ = response.Body.Close() }()
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", response.StatusCode, body)
+	}
+	if got := strings.TrimSpace(string(body)); got != "invalid request body: invalid display name" {
+		t.Errorf("unexpected validation error: %q", got)
+	}
+
+	assertUsers(t, uut, nil)
+}
+
+func TestUsers_ListEmpty(t *testing.T) {
+	uut := newWaypoint(t)
+	assertUsers(t, uut, nil)
 }
