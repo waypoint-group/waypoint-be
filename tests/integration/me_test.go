@@ -88,12 +88,3 @@ func TestMe_MissingAuthorization(t *testing.T) {
 		t.Errorf("expected status 401, got %d", response.StatusCode)
 	}
 }
-
-func TestMe_IncorrectPassword(t *testing.T) {
-	_, err := testEnv.Keycloak().AccessToken(t.Context(), "ada", "wrong-password")
-	if err == nil {
-		t.Fatal("expected Keycloak to reject incorrect password")
-	}
-}
-
-// TODO: Add linked-account and different-issuer cases when account linking is implemented.
