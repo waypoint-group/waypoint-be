@@ -41,7 +41,11 @@ func New(cfg *Config) (*Waypoint, error) {
 	}
 
 	services := newServices(database, cfg)
-	router := newRouter(database, services, cfg)
+	router, err := newRouter(database, services, cfg)
+	if err != nil {
+		database.Close()
+		return nil, fmt.Errorf("configure router: %w", err)
+	}
 	return &Waypoint{
 		Database: database,
 		Services: services,

@@ -1,32 +1,24 @@
 package health
 
 import (
-	"net/http"
+	"context"
+	"strings"
 
+	"github.com/waypoint-group/waypoint-be/internal/api"
 	"github.com/waypoint-group/waypoint-be/internal/db"
 )
 
-// Handler serves application health and readiness checks.
-type Handler struct {
-	database *db.Database
+type Handler struct{ database *db.Database }
+
+func NewHandler(database *db.Database) *Handler { return &Handler{database: database} }
+
+func (h *Handler) Healthz(context.Context) (api.HealthzOK, error) {
+	return api.HealthzOK{Data: strings.NewReader("OK")}, nil
 }
 
-// NewHandler constructs health checks backed by the application database.
-func NewHandler(database *db.Database) *Handler {
-	return &Handler{database: database}
-}
-
-func (h *Handler) Healthz(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("OK"))
-}
-
-func (h *Handler) Readyz(w http.ResponseWriter, r *http.Request) {
-	if err := h.database.Ping(r.Context()); err != nil {
-		http.Error(w, ErrDatabaseUnavailable.Error(), http.StatusServiceUnavailable)
-		return
+func (h *Handler) Readyz(ctx context.Context) (api.ReadyzRes, error) {
+	if err := h.database.Ping(ctx); err != nil {
+		return &api.ServiceUnavailable{Data: strings.NewReader(ErrDatabaseUnavailable.Error() + "\n")}, nil
 	}
-
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("READY"))
+	return &api.ReadyzOK{Data: strings.NewReader("READY")}, nil
 }

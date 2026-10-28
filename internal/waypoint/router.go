@@ -3,46 +3,56 @@ package waypoint
 import (
 	"net/http"
 
+	"github.com/waypoint-group/waypoint-be/internal/api"
 	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/health"
 	"github.com/waypoint-group/waypoint-be/internal/user"
 	"github.com/waypoint-group/waypoint-be/internal/workspace"
 )
 
-// newRouter returns the HTTP handler containing all Waypoint API routes.
-func newRouter(database *db.Database, services *Services, cfg *Config) *http.ServeMux {
+type (
+	healthHandler    = health.Handler
+	userHandler      = user.Handler
+	workspaceHandler = workspace.Handler
+)
+
+// apiHandler combines the domain handlers into ogen's operation interface.
+type apiHandler struct {
+	*healthHandler
+	*userHandler
+	*workspaceHandler
+}
+
+func newRouter(database *db.Database, services *Services, cfg *Config) (*http.ServeMux, error) {
+	handlers := &apiHandler{health.NewHandler(database), user.NewHandler(services.Users), workspace.NewHandler(services.Workspaces)}
+	server, err := api.NewServer(handlers, services.Users, api.WithErrorHandler(api.HandleError))
+	if err != nil {
+		return nil, err
+	}
+	maxBytes := http.MaxBytesHandler(server, 1<<20)
+	requireIdentity := user.RequireIdentity(cfg.JWT)(maxBytes)
+	requireActor := services.Users.RequireActor(cfg.JWT)(maxBytes)
+
 	mux := http.NewServeMux()
-	const maxRequestBodyBytes = 1 << 20
 
 	// Health
-	healthH := health.NewHandler(database)
-	mux.HandleFunc("GET /healthz", healthH.Healthz)
-	mux.HandleFunc("GET /readyz", healthH.Readyz)
+	mux.Handle("GET /healthz", maxBytes)
+	mux.Handle("GET /readyz", maxBytes)
 
 	// Users
-	userH := user.NewHandler(services.Users, cfg.JWT)
-	mux.Handle(
-		"POST /users",
-		http.MaxBytesHandler(http.HandlerFunc(userH.CreateUser), maxRequestBodyBytes),
-	)
 	// TODO: ListUsers should be admin only.
-	mux.HandleFunc("GET /users", userH.ListUsers)
-	mux.HandleFunc("GET /users/{id}", userH.GetUser)
-	mux.HandleFunc("DELETE /users/{id}", userH.DeleteUser)
-
-	// User profile
-	mux.HandleFunc("GET /me", userH.Me)
+	mux.Handle("GET /users", maxBytes)
+	mux.Handle("GET /users/{id}", maxBytes)
+	mux.Handle("POST /users", requireIdentity)
+	mux.Handle("DELETE /users/{id}", requireActor)
+	mux.Handle("GET /me", requireIdentity)
 
 	// Workspaces
-	workspaceH := workspace.NewHandler(services.Workspaces, services.Users, cfg.JWT)
-	mux.Handle(
-		"POST /workspaces",
-		http.MaxBytesHandler(http.HandlerFunc(workspaceH.CreateWorkspace), maxRequestBodyBytes),
-	)
-	mux.HandleFunc("GET /workspaces/{workspace_id}", workspaceH.GetWorkspace)
-	mux.HandleFunc("POST /workspaces/{workspace_id}/users/{user_id}", workspaceH.AddWorkspaceMember)
-	mux.HandleFunc("DELETE /workspaces/{workspace_id}/users/{user_id}", workspaceH.RemoveWorkspaceMember)
-	mux.HandleFunc("DELETE /workspaces/{workspace_id}", workspaceH.DeleteWorkspace)
+	mux.Handle("POST /workspaces", requireActor)
+	mux.Handle("GET /workspaces/{workspace_id}", requireActor)
+	mux.Handle("DELETE /workspaces/{workspace_id}", requireActor)
+	mux.Handle("POST /workspaces/{workspace_id}/users/{user_id}", requireActor)
+	mux.Handle("DELETE /workspaces/{workspace_id}/users/{user_id}", requireActor)
 
-	return mux
+	return mux, nil
 }

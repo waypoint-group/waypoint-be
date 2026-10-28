@@ -37,11 +37,6 @@ type DeleteWorkspaceInput struct {
 	ActorID     uuid.UUID
 }
 
-// CreateWorkspaceRequest contains the fields accepted when creating a workspace.
-type CreateWorkspaceRequest struct {
-	Name string `json:"name"`
-}
-
 // Workspace contains workspace details and its current membership.
 type Workspace struct {
 	ID        uuid.UUID                `json:"id"`

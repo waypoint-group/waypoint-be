@@ -1,155 +1,82 @@
 package workspace
 
 import (
+	"context"
 	"errors"
-	"log"
 	"net/http"
+	"uuid"
 
-	"github.com/waypoint-group/waypoint-be/internal/httpx"
-	"github.com/waypoint-group/waypoint-be/internal/middleware"
+	googleuuid "github.com/google/uuid"
+	"github.com/waypoint-group/waypoint-be/internal/api"
 	"github.com/waypoint-group/waypoint-be/internal/user"
 )
 
-// Handler serves authenticated workspace and membership operations over HTTP.
-type Handler struct {
-	service   *Service
-	users     *user.Service
-	jwtConfig middleware.JWTConfig
-}
+type Handler struct{ service *Service }
 
-// NewHandler constructs a handler that resolves verified identities to local users.
-func NewHandler(service *Service, users *user.Service, jwtConfig middleware.JWTConfig) *Handler {
-	return &Handler{service: service, users: users, jwtConfig: jwtConfig}
-}
+func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
-// CreateWorkspace creates a workspace owned by the authenticated user.
-func (h *Handler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
+func (h *Handler) CreateWorkspace(ctx context.Context, req *api.CreateWorkspaceRequest) (api.CreateWorkspaceRes, error) {
+	actor, ok := user.ActorID(ctx)
 	if !ok {
-		return
+		return nil, errors.New("missing actor in context")
 	}
-
-	var request CreateWorkspaceRequest
-	if err := httpx.ReadJSON(r, &request); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	result, err := h.service.CreateWorkspace(r.Context(), CreateWorkspaceInput{Name: request.Name, ActorID: actorID})
+	result, err := h.service.CreateWorkspace(ctx, CreateWorkspaceInput{Name: req.Name, ActorID: actor})
 	if err != nil {
-		writeError(w, err)
-		return
+		return nil, responseError(err)
 	}
-
-	if err := httpx.WriteJSON(w, http.StatusCreated, result); err != nil {
-		writeError(w, err)
-		return
-	}
+	response := workspaceResponse(result)
+	return &response, nil
 }
 
-// GetWorkspace returns workspace details to an authenticated member.
-func (h *Handler) GetWorkspace(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
+func (h *Handler) GetWorkspace(ctx context.Context, params api.GetWorkspaceParams) (api.GetWorkspaceRes, error) {
+	actor, ok := user.ActorID(ctx)
 	if !ok {
-		return
+		return nil, errors.New("missing actor in context")
 	}
-
-	workspaceID, err := httpx.PathID(r, "workspace_id")
+	result, err := h.service.ReadWorkspace(ctx, ReadWorkspaceInput{WorkspaceID: uuid.UUID(params.WorkspaceID), ActorID: actor})
 	if err != nil {
-		http.Error(w, ErrInvalidID.Error(), http.StatusBadRequest)
-		return
+		return nil, responseError(err)
 	}
-
-	result, err := h.service.ReadWorkspace(r.Context(), ReadWorkspaceInput{WorkspaceID: workspaceID, ActorID: actorID})
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-
-	if err := httpx.WriteJSON(w, http.StatusOK, result); err != nil {
-		writeError(w, err)
-		return
-	}
+	response := workspaceResponse(result)
+	return &response, nil
 }
 
-// AddWorkspaceMember adds the user in the path with the member role.
-func (h *Handler) AddWorkspaceMember(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
+func (h *Handler) AddWorkspaceMember(ctx context.Context, params api.AddWorkspaceMemberParams) (api.AddWorkspaceMemberRes, error) {
+	actor, ok := user.ActorID(ctx)
 	if !ok {
-		return
+		return nil, errors.New("missing actor in context")
 	}
-
-	workspaceID, err := httpx.PathID(r, "workspace_id")
+	result, err := h.service.AddWorkspaceMember(ctx, AddWorkspaceMemberInput{WorkspaceID: uuid.UUID(params.WorkspaceID), UserID: uuid.UUID(params.UserID), ActorID: actor})
 	if err != nil {
-		http.Error(w, ErrInvalidID.Error(), http.StatusBadRequest)
-		return
+		return nil, responseError(err)
 	}
-	userID, err := httpx.PathID(r, "user_id")
-	if err != nil {
-		http.Error(w, ErrInvalidID.Error(), http.StatusBadRequest)
-		return
-	}
-
-	result, err := h.service.AddWorkspaceMember(r.Context(), AddWorkspaceMemberInput{WorkspaceID: workspaceID, UserID: userID, ActorID: actorID})
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-
-	if err := httpx.WriteJSON(w, http.StatusCreated, result); err != nil {
-		writeError(w, err)
-		return
-	}
+	return &api.WorkspaceMember{WorkspaceID: googleuuid.UUID(result.WorkspaceID), UserID: googleuuid.UUID(result.UserID), Role: api.WorkspaceMemberRole(result.Role)}, nil
 }
 
-// RemoveWorkspaceMember removes the user in the path, subject to owner permissions.
-func (h *Handler) RemoveWorkspaceMember(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
+func (h *Handler) RemoveWorkspaceMember(ctx context.Context, params api.RemoveWorkspaceMemberParams) (api.RemoveWorkspaceMemberRes, error) {
+	actor, ok := user.ActorID(ctx)
 	if !ok {
-		return
+		return nil, errors.New("missing actor in context")
 	}
-
-	workspaceID, err := httpx.PathID(r, "workspace_id")
-	if err != nil {
-		http.Error(w, ErrInvalidID.Error(), http.StatusBadRequest)
-		return
+	if err := h.service.RemoveWorkspaceMember(ctx, RemoveWorkspaceMemberInput{WorkspaceID: uuid.UUID(params.WorkspaceID), UserID: uuid.UUID(params.UserID), ActorID: actor}); err != nil {
+		return nil, responseError(err)
 	}
-	userID, err := httpx.PathID(r, "user_id")
-	if err != nil {
-		http.Error(w, ErrInvalidID.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if err := h.service.RemoveWorkspaceMember(r.Context(), RemoveWorkspaceMemberInput{WorkspaceID: workspaceID, UserID: userID, ActorID: actorID}); err != nil {
-		writeError(w, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+	return &api.RemoveWorkspaceMemberNoContent{}, nil
 }
 
-// DeleteWorkspace deletes a workspace and its contents for its authenticated owner,
-// even when other members remain.
-func (h *Handler) DeleteWorkspace(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.users.GetActorID(w, r, h.jwtConfig)
+func (h *Handler) DeleteWorkspace(ctx context.Context, params api.DeleteWorkspaceParams) (api.DeleteWorkspaceRes, error) {
+	actor, ok := user.ActorID(ctx)
 	if !ok {
-		return
+		return nil, errors.New("missing actor in context")
 	}
-
-	workspaceID, err := httpx.PathID(r, "workspace_id")
-	if err != nil {
-		http.Error(w, ErrInvalidID.Error(), http.StatusBadRequest)
-		return
+	if err := h.service.DeleteWorkspace(ctx, DeleteWorkspaceInput{WorkspaceID: uuid.UUID(params.WorkspaceID), ActorID: actor}); err != nil {
+		return nil, responseError(err)
 	}
-
-	if err := h.service.DeleteWorkspace(r.Context(), DeleteWorkspaceInput{WorkspaceID: workspaceID, ActorID: actorID}); err != nil {
-		writeError(w, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+	return &api.DeleteWorkspaceNoContent{}, nil
 }
 
-// writeError maps domain sentinels to HTTP statuses and hides unexpected causes.
-func writeError(w http.ResponseWriter, err error) {
+// responseError maps domain errors to the documented HTTP responses.
+func responseError(err error) error {
 	status, public := http.StatusInternalServerError, "internal server error"
 	switch {
 	case errors.Is(err, ErrForbidden):
@@ -170,7 +97,22 @@ func writeError(w http.ResponseWriter, err error) {
 		status, public = http.StatusConflict, ErrOwnerRemoval.Error()
 	}
 	if status == http.StatusInternalServerError {
-		log.Printf("workspace error: %v", err)
+		return err
 	}
-	http.Error(w, public, status)
+	return &api.HTTPError{Status: status, Message: public}
+}
+
+// workspaceResponse maps domain values to the generated wire contract.
+func workspaceResponse(workspace *Workspace) api.Workspace {
+	members := make([]api.WorkspaceMemberSummary, 0, len(workspace.Members))
+	for _, member := range workspace.Members {
+		members = append(members, api.WorkspaceMemberSummary{
+			UserID: googleuuid.UUID(member.UserID),
+			Role:   api.WorkspaceMemberSummaryRole(member.Role),
+		})
+	}
+	return api.Workspace{
+		ID: googleuuid.UUID(workspace.ID), Name: workspace.Name,
+		CreatedAt: workspace.CreatedAt, Members: members,
+	}
 }

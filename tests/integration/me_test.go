@@ -4,11 +4,10 @@ package integration
 
 import (
 	"encoding/json"
+	"github.com/waypoint-group/waypoint-be/internal/api"
 	"io"
 	"net/http"
 	"testing"
-
-	userapi "github.com/waypoint-group/waypoint-be/internal/user"
 )
 
 func TestMe_Valid(t *testing.T) {
@@ -33,7 +32,7 @@ func TestMe_Valid(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, response.StatusCode)
 	}
 
-	var me userapi.MeResponse
+	var me api.MeResponse
 	if err := json.NewDecoder(response.Body).Decode(&me); err != nil {
 		t.Fatalf("decode profile: %v", err)
 	}

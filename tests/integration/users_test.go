@@ -5,6 +5,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/waypoint-group/waypoint-be/internal/api"
 	"io"
 	"net/http"
 	"strings"
@@ -20,7 +21,7 @@ func TestUsers_Create(t *testing.T) {
 
 	created := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	// Make sure new user's info can be queried through the API.
-	assertUsers(t, uut, []userapi.CreateUserResponse{created})
+	assertUsers(t, uut, []api.UserResponse{created})
 }
 
 func TestUsers_CreateDuplicateUserName(t *testing.T) {
@@ -48,7 +49,7 @@ func TestUsers_CreateDuplicateUserName(t *testing.T) {
 		t.Fatalf("expected user name conflict, got %d: %s", response.StatusCode, body)
 	}
 
-	assertUsers(t, uut, []userapi.CreateUserResponse{created})
+	assertUsers(t, uut, []api.UserResponse{created})
 
 	// A conflict must leave the second identity available for registration.
 	createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Another Ada")
@@ -87,7 +88,7 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 	}
 
 	// The failed registration must roll back the second profile.
-	assertUsers(t, uut, []userapi.CreateUserResponse{created})
+	assertUsers(t, uut, []api.UserResponse{created})
 
 	meResponse, err := uut.RequestWithAccessToken(t.Context(), http.MethodGet, "/me", nil, token)
 	if err != nil {
@@ -103,7 +104,7 @@ func TestUsers_CreateDuplicateIdentity(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", meResponse.StatusCode)
 	}
 
-	var profile userapi.MeResponse
+	var profile api.MeResponse
 	if err := json.NewDecoder(meResponse.Body).Decode(&profile); err != nil {
 		t.Fatalf("decode profile: %v", err)
 	}
@@ -131,7 +132,7 @@ func TestUsers_Get(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", response.StatusCode)
 	}
 
-	var get userapi.GetUserResponse
+	var get api.UserResponse
 	if err := json.NewDecoder(response.Body).Decode(&get); err != nil {
 		t.Fatalf("failed to decode user: %v", err)
 	}
@@ -185,8 +186,8 @@ func TestUsers_GetInvalidID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read error response: %v", err)
 	}
-	if got := strings.TrimSpace(string(body)); got != "invalid user id" {
-		t.Errorf("expected error %q, got %q", "invalid user id", got)
+	if got := strings.TrimSpace(string(body)); got != "invalid request parameters" {
+		t.Errorf("expected error %q, got %q", "invalid request parameters", got)
 	}
 }
 
@@ -195,7 +196,7 @@ func TestUsers_List(t *testing.T) {
 
 	ada := createTestUserChecked(t, uut, "ada@example.com", "ada", "Ada Lovelace")
 	linkedAda := createTestUserChecked(t, uut, "linked-ada@example.com", "linked-ada", "Ada Lovelace")
-	assertUsers(t, uut, []userapi.CreateUserResponse{ada, linkedAda})
+	assertUsers(t, uut, []api.UserResponse{ada, linkedAda})
 }
 
 func TestUsers_DeleteExistingUserMissingAuthorization(t *testing.T) {
@@ -230,8 +231,8 @@ func TestUsers_DeleteInvalidID(t *testing.T) {
 	if response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, response.StatusCode, payload)
 	}
-	if got := strings.TrimSpace(string(payload)); got != userapi.ErrInvalidId.Error() {
-		t.Fatalf("expected error %q, got %q", userapi.ErrInvalidId, got)
+	if got := strings.TrimSpace(string(payload)); got != "invalid request parameters" {
+		t.Fatalf("expected error %q, got %q", "invalid request parameters", got)
 	}
 }
 
@@ -301,7 +302,7 @@ func TestUsers_Delete(t *testing.T) {
 	if len(payload) != 0 {
 		t.Fatalf("expected empty body, got %s", payload)
 	}
-	assertUsers(t, uut, []userapi.CreateUserResponse{other})
+	assertUsers(t, uut, []api.UserResponse{other})
 }
 
 func createTestUserChecked(
@@ -310,9 +311,9 @@ func createTestUserChecked(
 	email,
 	userName,
 	displayName string,
-) userapi.CreateUserResponse {
+) api.UserResponse {
 	t.Helper()
-	body, err := json.Marshal(userapi.CreateUserRequest{UserName: userName, DisplayName: displayName})
+	body, err := json.Marshal(api.CreateUserRequest{UserName: userName, DisplayName: displayName})
 	if err != nil {
 		t.Fatalf("failed to encode user: %v", err)
 	}
@@ -335,11 +336,11 @@ func createTestUserChecked(
 		}
 		t.Fatalf("expected status 201, got %d", response.StatusCode)
 	}
-	if got := response.Header.Get("Content-Type"); got != "application/json" {
+	if got := response.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Errorf("expected JSON content type, got %q", got)
 	}
 
-	var user userapi.CreateUserResponse
+	var user api.UserResponse
 	if err := json.NewDecoder(response.Body).Decode(&user); err != nil {
 		t.Fatalf("failed to decode created user: %v", err)
 	}
@@ -356,7 +357,7 @@ func createTestUserChecked(
 	return user
 }
 
-func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []userapi.CreateUserResponse) {
+func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []api.UserResponse) {
 	t.Helper()
 	response, err := uut.Request(t.Context(), http.MethodGet, "/users", nil)
 	if err != nil {
@@ -372,7 +373,7 @@ func assertUsers(t *testing.T, uut *testlib.TestWaypoint, want []userapi.CreateU
 		t.Fatalf("expected status 200, got %d", response.StatusCode)
 	}
 
-	var list userapi.ListUsersResponse
+	var list api.ListUsersResponse
 	if err := json.NewDecoder(response.Body).Decode(&list); err != nil {
 		t.Fatalf("failed to decode users: %v", err)
 	}
