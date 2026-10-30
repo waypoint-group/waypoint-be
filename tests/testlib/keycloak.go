@@ -17,7 +17,7 @@ import (
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/waypoint-group/waypoint-be/internal/middleware"
+	"github.com/waypoint-group/waypoint-be/internal/authn"
 )
 
 //go:embed testdata/waypoint-test-realm.json
@@ -26,7 +26,7 @@ var waypointRealm []byte
 type Keycloak struct {
 	ctr        *testcontainers.DockerContainer
 	URL        string
-	JWTConfig  middleware.JWTConfig
+	JWTConfig  authn.JWTConfig
 	cancelKeys context.CancelFunc
 }
 
@@ -76,7 +76,7 @@ func NewKeycloak() (*Keycloak, error) {
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("create Keycloak key resolver: %w", err), kc.Close())
 	}
-	kc.JWTConfig = middleware.JWTConfig{
+	kc.JWTConfig = authn.JWTConfig{
 		Issuer:   issuerURL,
 		Audience: waypointAudience,
 		KeyFunc:  keys.Keyfunc,

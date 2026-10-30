@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
-	"github.com/waypoint-group/waypoint-be/internal/middleware"
+	"github.com/waypoint-group/waypoint-be/internal/authn"
 	"github.com/waypoint-group/waypoint-be/internal/waypoint"
 )
 
@@ -34,7 +34,7 @@ func (cmd *ServeCommand) Run() (runErr error) {
 		return fmt.Errorf("parse config: %w", err)
 	}
 
-	OIDCProvider, err := middleware.DiscoverOIDCProvider(cfg.JWT.Issuer)
+	OIDCProvider, err := authn.DiscoverOIDCProvider(cfg.JWT.Issuer)
 	if err != nil {
 		return fmt.Errorf("discover OIDC provider: %w", err)
 	}
@@ -76,7 +76,7 @@ func parseConfig(cmd *ServeCommand) (*waypoint.Config, error) {
 		Port:        cmd.Port,
 		DatabaseURL: cmd.DatabaseURL,
 		Migrate:     cmd.Migrate,
-		JWT: middleware.JWTConfig{
+		JWT: authn.JWTConfig{
 			Issuer:   cmd.JWT.Issuer,
 			Audience: cmd.JWT.Audience,
 		},

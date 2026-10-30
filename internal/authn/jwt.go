@@ -1,4 +1,5 @@
-package middleware
+// Package authn verifies identities and carries authentication context.
+package authn
 
 import (
 	"encoding/json"

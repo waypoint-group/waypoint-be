@@ -25,7 +25,7 @@ type apiHandler struct {
 
 func newRouter(database *db.Database, services *Services, cfg *Config) (*http.ServeMux, error) {
 	handlers := &apiHandler{health.NewHandler(database), user.NewHandler(services.Users), workspace.NewHandler(services.Workspaces)}
-	security := user.NewSecurity(services.Users, cfg.JWT)
+	security := &apiSecurity{users: services.Users, jwtConfig: cfg.JWT}
 	server, err := api.NewServer(handlers, security, api.WithErrorHandler(api.HandleError))
 	if err != nil {
 		return nil, err

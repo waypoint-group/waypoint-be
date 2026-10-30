@@ -7,6 +7,7 @@ import (
 	"uuid"
 
 	"github.com/waypoint-group/waypoint-be/internal/api"
+	"github.com/waypoint-group/waypoint-be/internal/authn"
 )
 
 type Handler struct{ service *Service }
@@ -14,7 +15,7 @@ type Handler struct{ service *Service }
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
 func (h *Handler) CreateUser(ctx context.Context, req *api.CreateUserRequest) (api.CreateUserRes, error) {
-	claims, ok := identityClaims(ctx)
+	claims, ok := authn.IdentityClaims(ctx)
 	if !ok {
 		return nil, errors.New("missing identity in context")
 	}
@@ -46,7 +47,7 @@ func (h *Handler) ListUsers(ctx context.Context) (api.ListUsersRes, error) {
 }
 
 func (h *Handler) Me(ctx context.Context) (api.MeRes, error) {
-	claims, ok := identityClaims(ctx)
+	claims, ok := authn.IdentityClaims(ctx)
 	if !ok {
 		return nil, errors.New("missing identity in context")
 	}
@@ -62,7 +63,7 @@ func (h *Handler) Me(ctx context.Context) (api.MeRes, error) {
 }
 
 func (h *Handler) DeleteUser(ctx context.Context, params api.DeleteUserParams) (api.DeleteUserRes, error) {
-	actor, ok := ActorID(ctx)
+	actor, ok := authn.ActorID(ctx)
 	if !ok {
 		return nil, errors.New("missing actor in context")
 	}

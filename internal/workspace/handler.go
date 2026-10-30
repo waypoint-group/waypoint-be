@@ -8,7 +8,7 @@ import (
 
 	googleuuid "github.com/google/uuid"
 	"github.com/waypoint-group/waypoint-be/internal/api"
-	"github.com/waypoint-group/waypoint-be/internal/user"
+	"github.com/waypoint-group/waypoint-be/internal/authn"
 )
 
 type Handler struct{ service *Service }
@@ -16,7 +16,7 @@ type Handler struct{ service *Service }
 func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
 func (h *Handler) CreateWorkspace(ctx context.Context, req *api.CreateWorkspaceRequest) (api.CreateWorkspaceRes, error) {
-	actor, ok := user.ActorID(ctx)
+	actor, ok := authn.ActorID(ctx)
 	if !ok {
 		return nil, errors.New("missing actor in context")
 	}
@@ -29,7 +29,7 @@ func (h *Handler) CreateWorkspace(ctx context.Context, req *api.CreateWorkspaceR
 }
 
 func (h *Handler) GetWorkspace(ctx context.Context, params api.GetWorkspaceParams) (api.GetWorkspaceRes, error) {
-	actor, ok := user.ActorID(ctx)
+	actor, ok := authn.ActorID(ctx)
 	if !ok {
 		return nil, errors.New("missing actor in context")
 	}
@@ -42,7 +42,7 @@ func (h *Handler) GetWorkspace(ctx context.Context, params api.GetWorkspaceParam
 }
 
 func (h *Handler) AddWorkspaceMember(ctx context.Context, params api.AddWorkspaceMemberParams) (api.AddWorkspaceMemberRes, error) {
-	actor, ok := user.ActorID(ctx)
+	actor, ok := authn.ActorID(ctx)
 	if !ok {
 		return nil, errors.New("missing actor in context")
 	}
@@ -54,7 +54,7 @@ func (h *Handler) AddWorkspaceMember(ctx context.Context, params api.AddWorkspac
 }
 
 func (h *Handler) RemoveWorkspaceMember(ctx context.Context, params api.RemoveWorkspaceMemberParams) (api.RemoveWorkspaceMemberRes, error) {
-	actor, ok := user.ActorID(ctx)
+	actor, ok := authn.ActorID(ctx)
 	if !ok {
 		return nil, errors.New("missing actor in context")
 	}
@@ -65,7 +65,7 @@ func (h *Handler) RemoveWorkspaceMember(ctx context.Context, params api.RemoveWo
 }
 
 func (h *Handler) DeleteWorkspace(ctx context.Context, params api.DeleteWorkspaceParams) (api.DeleteWorkspaceRes, error) {
-	actor, ok := user.ActorID(ctx)
+	actor, ok := authn.ActorID(ctx)
 	if !ok {
 		return nil, errors.New("missing actor in context")
 	}
