@@ -38,9 +38,6 @@ func (s *Service) CreateWorkspace(
 	if name == "" {
 		return nil, ErrInvalidName
 	}
-	if input.ActorID == (uuid.UUID{}) {
-		return nil, ErrInvalidID
-	}
 
 	tx, err := s.database.BeginTx(ctx)
 	if err != nil {
@@ -85,10 +82,6 @@ func (s *Service) ReadWorkspace(
 	ctx context.Context,
 	input ReadWorkspaceInput,
 ) (_ *Workspace, readWorkspaceError error) {
-	if input.WorkspaceID == (uuid.UUID{}) || input.ActorID == (uuid.UUID{}) {
-		return nil, ErrInvalidID
-	}
-
 	tx, err := s.database.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin workspace transaction: %w", err)
@@ -137,12 +130,6 @@ func (s *Service) AddWorkspaceMember(
 	ctx context.Context,
 	input AddWorkspaceMemberInput,
 ) (_ *WorkspaceMember, addWorkspaceMemberError error) {
-	if input.WorkspaceID == (uuid.UUID{}) ||
-		input.ActorID == (uuid.UUID{}) ||
-		input.UserID == (uuid.UUID{}) {
-		return nil, ErrInvalidID
-	}
-
 	tx, err := s.database.BeginTx(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("begin transaction: %w", err)
@@ -210,12 +197,6 @@ func (s *Service) RemoveWorkspaceMember(
 	ctx context.Context,
 	input RemoveWorkspaceMemberInput,
 ) (removeWorkspaceMemberError error) {
-	if input.WorkspaceID == (uuid.UUID{}) ||
-		input.ActorID == (uuid.UUID{}) ||
-		input.UserID == (uuid.UUID{}) {
-		return ErrInvalidID
-	}
-
 	tx, err := s.database.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -289,10 +270,6 @@ func (s *Service) DeleteWorkspace(
 	ctx context.Context,
 	input DeleteWorkspaceInput,
 ) (deleteWorkspaceError error) {
-	if input.WorkspaceID == (uuid.UUID{}) || input.ActorID == (uuid.UUID{}) {
-		return ErrInvalidID
-	}
-
 	tx, err := s.database.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)

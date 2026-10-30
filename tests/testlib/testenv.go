@@ -97,6 +97,9 @@ func (w *TestWaypoint) Request(
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	return w.Client().Do(request)
 }
 
@@ -108,6 +111,9 @@ func (w *TestWaypoint) RequestWithAccessToken(
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 	request.Header.Set("Authorization", "Bearer "+accessToken)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
 	return w.Client().Do(request)
 }
 

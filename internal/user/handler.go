@@ -1,191 +1,84 @@
 package user
 
 import (
+	"context"
 	"errors"
-	"log"
 	"net/http"
+	"uuid"
 
-	"github.com/waypoint-group/waypoint-be/internal/httpx"
-	"github.com/waypoint-group/waypoint-be/internal/middleware"
+	"github.com/waypoint-group/waypoint-be/internal/api"
+	"github.com/waypoint-group/waypoint-be/internal/authn"
 )
 
-// Handler serves user profiles, registration, and account deletion over HTTP.
-type Handler struct {
-	service   *Service
-	jwtConfig middleware.JWTConfig
-}
+type Handler struct{ service *Service }
 
-// NewHandler constructs a user handler with access token verification.
-func NewHandler(service *Service, jwtConfig middleware.JWTConfig) *Handler {
-	return &Handler{service: service, jwtConfig: jwtConfig}
-}
+func NewHandler(service *Service) *Handler { return &Handler{service: service} }
 
-// CreateUser validates and creates a user from the request body.
-func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	_, claims, err := middleware.ExtractAndValidateJWT(r, h.jwtConfig)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var request CreateUserRequest
-	if err := httpx.ReadJSON(r, &request); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	u, err := h.service.CreateUser(r.Context(), CreateUserInput{
-		Email:       claims.Email,
-		UserName:    request.UserName,
-		DisplayName: request.DisplayName,
-		Identity:    ExternalIdentity{Issuer: claims.Issuer, Subject: claims.Subject},
-	})
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-
-	response := CreateUserResponse{
-		ID:          u.ID.String(),
-		Email:       u.Email,
-		UserName:    u.UserName,
-		DisplayName: u.DisplayName,
-		CreatedAt:   u.CreatedAt,
-	}
-	if err := httpx.WriteJSON(w, http.StatusCreated, response); err != nil {
-		writeError(w, err)
-	}
-}
-
-// GetUser retrieves the user identified by the request path.
-func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
-	ID, err := httpx.PathID(r, "id")
-	if err != nil {
-		http.Error(w, ErrInvalidId.Error(), http.StatusBadRequest)
-		return
-	}
-
-	user, err := h.service.ReadUser(r.Context(), ID)
-	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			http.Error(w, ErrNotFound.Error(), http.StatusNotFound)
-			return
-		}
-
-		writeError(w, err)
-		return
-	}
-
-	response := GetUserResponse{
-		ID:          user.ID.String(),
-		Email:       user.Email,
-		UserName:    user.UserName,
-		DisplayName: user.DisplayName,
-		CreatedAt:   user.CreatedAt,
-	}
-	if err := httpx.WriteJSON(w, http.StatusOK, response); err != nil {
-		writeError(w, err)
-	}
-}
-
-// ListUsers writes all users returned by the accounts service.
-func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := h.service.ListUsers(r.Context())
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-
-	response := ListUsersResponse{Users: make([]GetUserResponse, 0, len(users))}
-	for _, user := range users {
-		response.Users = append(response.Users, GetUserResponse{
-			ID:          user.ID.String(),
-			Email:       user.Email,
-			UserName:    user.UserName,
-			DisplayName: user.DisplayName,
-			CreatedAt:   user.CreatedAt,
-		})
-	}
-	if err := httpx.WriteJSON(w, http.StatusOK, response); err != nil {
-		writeError(w, err)
-	}
-}
-
-// Me writes the local user profile associated with the bearer token's identity.
-func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
-	_, claims, err := middleware.ExtractAndValidateJWT(r, h.jwtConfig)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.service.ReadUserProfile(
-		r.Context(),
-		claims.Issuer,
-		claims.Subject,
-	)
-	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			http.Error(w, ErrNotFound.Error(), http.StatusNotFound)
-		} else {
-			writeError(w, err)
-		}
-		return
-	}
-
-	user := MeUser{
-		ID:          profile.User.ID.String(),
-		Email:       profile.User.Email,
-		UserName:    profile.User.UserName,
-		DisplayName: profile.User.DisplayName,
-		CreatedAt:   profile.User.CreatedAt,
-	}
-	workspaceMemberships := make([]MeWorkspaceMembership, 0, len(profile.WorkspaceMemberships))
-	for _, wsMembership := range profile.WorkspaceMemberships {
-		workspaceMemberships = append(workspaceMemberships, MeWorkspaceMembership{
-			WorkspaceID:   wsMembership.WorkspaceID.String(),
-			WorkspaceName: wsMembership.WorkspaceName,
-		})
-	}
-	err = httpx.WriteJSON(
-		w,
-		http.StatusOK,
-		MeResponse{
-			User:                 user,
-			WorkspaceMemberships: workspaceMemberships,
-		},
-	)
-	if err != nil {
-		writeError(w, err)
-	}
-}
-
-// DeleteUser deletes the authenticated user's local account and owned workspaces.
-func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	actorID, ok := h.service.GetActorID(w, r, h.jwtConfig)
+func (h *Handler) CreateUser(ctx context.Context, req *api.CreateUserRequest) (api.CreateUserRes, error) {
+	claims, ok := authn.IdentityClaims(ctx)
 	if !ok {
-		return
+		return nil, errors.New("missing identity in context")
 	}
-
-	userID, err := httpx.PathID(r, "id")
+	result, err := h.service.CreateUser(ctx, CreateUserInput{Email: claims.Email, UserName: req.UserName, DisplayName: req.DisplayName, Identity: ExternalIdentity{Issuer: claims.Issuer, Subject: claims.Subject}})
 	if err != nil {
-		http.Error(w, ErrInvalidId.Error(), http.StatusBadRequest)
-		return
+		return nil, responseError(err)
 	}
-
-	err = h.service.DeleteUser(r.Context(), DeleteUserInput{
-		UserID:  userID,
-		ActorID: actorID,
-	})
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
+	return userResponse(result), nil
 }
 
-// writeError maps domain sentinels to HTTP statuses and hides unexpected causes.
-func writeError(w http.ResponseWriter, err error) {
+func (h *Handler) GetUser(ctx context.Context, params api.GetUserParams) (api.GetUserRes, error) {
+	result, err := h.service.ReadUser(ctx, uuid.UUID(params.ID))
+	if err != nil {
+		return nil, responseError(err)
+	}
+	return userResponse(result), nil
+}
+
+func (h *Handler) ListUsers(ctx context.Context) (api.ListUsersRes, error) {
+	users, err := h.service.ListUsers(ctx)
+	if err != nil {
+		return nil, responseError(err)
+	}
+	result := &api.ListUsersResponse{Users: make([]api.UserResponse, 0, len(users))}
+	for i := range users {
+		result.Users = append(result.Users, *userResponse(&users[i]))
+	}
+	return result, nil
+}
+
+func (h *Handler) Me(ctx context.Context) (api.MeRes, error) {
+	claims, ok := authn.IdentityClaims(ctx)
+	if !ok {
+		return nil, errors.New("missing identity in context")
+	}
+	profile, err := h.service.ReadUserProfile(ctx, claims.Issuer, claims.Subject)
+	if err != nil {
+		return nil, responseError(err)
+	}
+	result := &api.MeResponse{User: *userResponse(&profile.User), WorkspaceMemberships: make([]api.WorkspaceMembership, 0, len(profile.WorkspaceMemberships))}
+	for _, m := range profile.WorkspaceMemberships {
+		result.WorkspaceMemberships = append(result.WorkspaceMemberships, api.WorkspaceMembership{WorkspaceID: m.WorkspaceID.String(), WorkspaceName: m.WorkspaceName})
+	}
+	return result, nil
+}
+
+func (h *Handler) DeleteUser(ctx context.Context, params api.DeleteUserParams) (api.DeleteUserRes, error) {
+	actor, ok := authn.ActorID(ctx)
+	if !ok {
+		return nil, errors.New("missing actor in context")
+	}
+	if err := h.service.DeleteUser(ctx, DeleteUserInput{UserID: uuid.UUID(params.ID), ActorID: actor}); err != nil {
+		return nil, responseError(err)
+	}
+	return &api.DeleteUserNoContent{}, nil
+}
+
+func userResponse(u *User) *api.UserResponse {
+	return &api.UserResponse{ID: u.ID.String(), Email: u.Email, UserName: u.UserName, DisplayName: u.DisplayName, CreatedAt: u.CreatedAt}
+}
+
+// responseError maps domain errors to the documented HTTP responses.
+func responseError(err error) error {
 	status, public := http.StatusInternalServerError, "internal server error"
 	switch {
 	case errors.Is(err, ErrForbidden):
@@ -194,11 +87,11 @@ func writeError(w http.ResponseWriter, err error) {
 		status, public = http.StatusNotFound, err.Error()
 	case errors.Is(err, ErrEmailTaken), errors.Is(err, ErrUserNameTaken), errors.Is(err, ErrIdentityTaken):
 		status, public = http.StatusConflict, err.Error()
-	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity), errors.Is(err, ErrInvalidId):
+	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity):
 		status, public = http.StatusBadRequest, "invalid request body: "+err.Error()
 	}
 	if status == http.StatusInternalServerError {
-		log.Printf("user error: %v", err)
+		return err
 	}
-	http.Error(w, public, status)
+	return &api.HTTPError{Status: status, Message: public}
 }

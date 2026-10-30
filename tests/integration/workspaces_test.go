@@ -11,6 +11,7 @@ import (
 	"testing"
 	"uuid"
 
+	"github.com/waypoint-group/waypoint-be/internal/api"
 	userapi "github.com/waypoint-group/waypoint-be/internal/user"
 	workspaceapi "github.com/waypoint-group/waypoint-be/internal/workspace"
 	"github.com/waypoint-group/waypoint-be/tests/testlib"
@@ -155,8 +156,8 @@ func TestWorkspaces_GetInvalidID(t *testing.T) {
 	if response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, response.StatusCode, payload)
 	}
-	if got := strings.TrimSpace(string(payload)); got != workspaceapi.ErrInvalidID.Error() {
-		t.Fatalf("expected error %q, got %q", workspaceapi.ErrInvalidID, got)
+	if got := strings.TrimSpace(string(payload)); got != "invalid request parameters" {
+		t.Fatalf("expected error %q, got %q", "invalid request parameters", got)
 	}
 	assertWorkspaceMemberships(t, uut, token, created)
 }
@@ -180,8 +181,8 @@ func TestWorkspaces_DeleteInvalidID(t *testing.T) {
 	if response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, response.StatusCode, payload)
 	}
-	if got := strings.TrimSpace(string(payload)); got != workspaceapi.ErrInvalidID.Error() {
-		t.Fatalf("expected error %q, got %q", workspaceapi.ErrInvalidID, got)
+	if got := strings.TrimSpace(string(payload)); got != "invalid request parameters" {
+		t.Fatalf("expected error %q, got %q", "invalid request parameters", got)
 	}
 	assertWorkspaceMemberships(t, uut, token, created)
 }
@@ -206,8 +207,8 @@ func TestWorkspaces_AddMemberInvalidUserID(t *testing.T) {
 	if response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, response.StatusCode, payload)
 	}
-	if got := strings.TrimSpace(string(payload)); got != workspaceapi.ErrInvalidID.Error() {
-		t.Fatalf("expected error %q, got %q", workspaceapi.ErrInvalidID, got)
+	if got := strings.TrimSpace(string(payload)); got != "invalid request parameters" {
+		t.Fatalf("expected error %q, got %q", "invalid request parameters", got)
 	}
 	assertWorkspaceMemberships(t, uut, token, created)
 }
@@ -232,8 +233,8 @@ func TestWorkspaces_RemoveMemberInvalidUserID(t *testing.T) {
 	if response.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, response.StatusCode, payload)
 	}
-	if got := strings.TrimSpace(string(payload)); got != workspaceapi.ErrInvalidID.Error() {
-		t.Fatalf("expected error %q, got %q", workspaceapi.ErrInvalidID, got)
+	if got := strings.TrimSpace(string(payload)); got != "invalid request parameters" {
+		t.Fatalf("expected error %q, got %q", "invalid request parameters", got)
 	}
 	assertWorkspaceMemberships(t, uut, token, created)
 }
@@ -355,7 +356,7 @@ func TestWorkspaces_AddMember(t *testing.T) {
 		payload, _ := io.ReadAll(response.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, response.StatusCode, payload)
 	}
-	if got := response.Header.Get("Content-Type"); got != "application/json" {
+	if got := response.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 	var added workspaceapi.WorkspaceMember
@@ -388,7 +389,7 @@ func TestWorkspaces_GetMember(t *testing.T) {
 		addMemberBody, _ := io.ReadAll(addMemberResponse.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, addMemberResponse.StatusCode, addMemberBody)
 	}
-	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json" {
+	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
@@ -402,7 +403,7 @@ func TestWorkspaces_GetMember(t *testing.T) {
 		payload, _ := io.ReadAll(response.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, response.StatusCode, payload)
 	}
-	if got := response.Header.Get("Content-Type"); got != "application/json" {
+	if got := response.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 	var read workspaceapi.Workspace
@@ -432,7 +433,7 @@ func TestWorkspaces_AddExistingMember(t *testing.T) {
 		addMemberBody, _ := io.ReadAll(addMemberResponse.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, addMemberResponse.StatusCode, addMemberBody)
 	}
-	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json" {
+	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
@@ -473,7 +474,7 @@ func TestWorkspaces_DeleteAsMember(t *testing.T) {
 		addMemberBody, _ := io.ReadAll(addMemberResponse.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, addMemberResponse.StatusCode, addMemberBody)
 	}
-	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json" {
+	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
@@ -514,7 +515,7 @@ func TestWorkspaces_RemoveMemberAsMember(t *testing.T) {
 		addMemberBody, _ := io.ReadAll(addMemberResponse.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, addMemberResponse.StatusCode, addMemberBody)
 	}
-	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json" {
+	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
@@ -555,7 +556,7 @@ func TestWorkspaces_AddMemberAsMember(t *testing.T) {
 		addMemberBody, _ := io.ReadAll(addMemberResponse.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, addMemberResponse.StatusCode, addMemberBody)
 	}
-	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json" {
+	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
@@ -595,7 +596,7 @@ func TestWorkspaces_RemoveOwner(t *testing.T) {
 		addMemberBody, _ := io.ReadAll(addMemberResponse.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, addMemberResponse.StatusCode, addMemberBody)
 	}
-	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json" {
+	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
@@ -636,7 +637,7 @@ func TestWorkspaces_RemoveMember(t *testing.T) {
 		addMemberBody, _ := io.ReadAll(addMemberResponse.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, addMemberResponse.StatusCode, addMemberBody)
 	}
-	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json" {
+	if got := addMemberResponse.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 
@@ -747,7 +748,7 @@ func workspaceToken(t *testing.T, username string) string {
 func createTestWorkspace(t *testing.T, uut *testlib.TestWaypoint, token, name string) workspaceapi.Workspace {
 	t.Helper()
 
-	body, err := json.Marshal(workspaceapi.CreateWorkspaceRequest{Name: name})
+	body, err := json.Marshal(api.CreateWorkspaceRequest{Name: name})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -762,7 +763,7 @@ func createTestWorkspace(t *testing.T, uut *testlib.TestWaypoint, token, name st
 		payload, _ := io.ReadAll(response.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, response.StatusCode, payload)
 	}
-	if got := response.Header.Get("Content-Type"); got != "application/json" {
+	if got := response.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
 	var result workspaceapi.Workspace
@@ -787,10 +788,10 @@ func assertWorkspaceMemberships(t *testing.T, uut *testlib.TestWaypoint, token s
 		payload, _ := io.ReadAll(response.Body)
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, response.StatusCode, payload)
 	}
-	if got := response.Header.Get("Content-Type"); got != "application/json" {
+	if got := response.Header.Get("Content-Type"); got != "application/json; charset=utf-8" {
 		t.Fatalf("expected JSON content type, got %q", got)
 	}
-	var profile userapi.MeResponse
+	var profile api.MeResponse
 	if err := json.NewDecoder(response.Body).Decode(&profile); err != nil {
 		t.Fatal(err)
 	}

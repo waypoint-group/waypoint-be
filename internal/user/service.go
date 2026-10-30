@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"net/http"
 	"strings"
 	"uuid"
 
@@ -14,7 +12,6 @@ import (
 
 	"github.com/waypoint-group/waypoint-be/internal/db"
 	"github.com/waypoint-group/waypoint-be/internal/db/sqlc"
-	"github.com/waypoint-group/waypoint-be/internal/middleware"
 )
 
 // Service manages user registration, profile retrieval, and account deletion.
@@ -210,28 +207,6 @@ func (s *Service) DeleteUser(ctx context.Context, input DeleteUserInput) (delete
 	}
 
 	return nil
-}
-
-// GetActorID validates the request's bearer token and resolves its local user ID.
-func (s *Service) GetActorID(w http.ResponseWriter, r *http.Request, jwtConfig middleware.JWTConfig) (uuid.UUID, bool) {
-	_, claims, err := middleware.ExtractAndValidateJWT(r, jwtConfig)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return uuid.UUID{}, false
-	}
-
-	actor, err := s.ReadUserByIdentity(r.Context(), claims.Issuer, claims.Subject)
-	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			http.Error(w, ErrForbidden.Error(), http.StatusForbidden)
-		} else {
-			log.Printf("resolve actor identity: %v", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-		}
-		return uuid.UUID{}, false
-	}
-
-	return actor.ID, true
 }
 
 func userFromRow(row sqlc.User) User {

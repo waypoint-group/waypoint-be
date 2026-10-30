@@ -1,0 +1,457 @@
+openapi: 3.0.3
+info:
+  title: Waypoint API
+  version: 0.1.0
+  description: Waypoint API contract.
+paths:
+  /healthz:
+    get:
+      operationId: healthz
+      responses:
+        "200":
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: string
+  /readyz:
+    get:
+      operationId: readyz
+      responses:
+        "200":
+          description: Success
+          content:
+            text/plain:
+              schema:
+                type: string
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /users:
+    get:
+      operationId: listUsers
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListUsersResponse"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+    post:
+      operationId: createUser
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: JSON object, at most 1 MiB.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+  /users/{id}:
+    get:
+      operationId: getUser
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+    delete:
+      operationId: deleteUser
+      responses:
+        "204":
+          description: Success
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+  /me:
+    get:
+      operationId: me
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - bearerAuth: []
+  /workspaces:
+    post:
+      operationId: createWorkspace
+      summary: Create a workspace with the authenticated user as owner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        description: JSON object, at most 1 MiB.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspaceRequest"
+      responses:
+        "201":
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /workspaces/{workspace_id}:
+    get:
+      operationId: getWorkspace
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+    delete:
+      operationId: deleteWorkspace
+      responses:
+        "204":
+          description: Success
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+  /workspaces/{workspace_id}/users/{user_id}:
+    post:
+      operationId: addWorkspaceMember
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+    delete:
+      operationId: removeWorkspaceMember
+      responses:
+        "204":
+          description: Success
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: workspace_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateWorkspaceRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Trimmed by the backend; must contain a non-whitespace character.
+          minLength: 1
+    Workspace:
+      type: object
+      required:
+        - id
+        - name
+        - members
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceMemberSummary"
+        created_at:
+          type: string
+          format: date-time
+    WorkspaceMemberSummary:
+      type: object
+      required:
+        - user_id
+        - role
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum:
+            - owner
+            - member
+    WorkspaceMember:
+      type: object
+      required:
+        - workspace_id
+        - user_id
+        - role
+      properties:
+        workspace_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum:
+            - owner
+            - member
+    CreateUserRequest:
+      type: object
+      required:
+        - user_name
+        - display_name
+      properties:
+        user_name:
+          type: string
+        display_name:
+          type: string
+      additionalProperties: false
+    UserResponse:
+      type: object
+      required:
+        - id
+        - email
+        - user_name
+        - display_name
+        - created_at
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        user_name:
+          type: string
+        display_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    ListUsersResponse:
+      type: object
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+    WorkspaceMembership:
+      type: object
+      required:
+        - workspace_id
+        - workspace_name
+      properties:
+        workspace_id:
+          type: string
+        workspace_name:
+          type: string
+    MeResponse:
+      type: object
+      required:
+        - user
+        - workspace_memberships
+      properties:
+        user:
+          $ref: "#/components/schemas/UserResponse"
+        workspace_memberships:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkspaceMembership"
+  responses:
+    BadRequest:
+      description:
+        Invalid JSON, unknown fields, trailing data, oversized body, or
+        blank name
+      content:
+        text/plain:
+          schema:
+            type: string
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        text/plain:
+          schema:
+            type: string
+    Forbidden:
+      description: Token identity has no local user profile
+      content:
+        text/plain:
+          schema:
+            type: string
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        text/plain:
+          schema:
+            type: string
+    ServiceUnavailable:
+      description: Service unavailable
+      content:
+        text/plain:
+          schema:
+            type: string
+    Conflict:
+      description: Conflict
+      content:
+        text/plain:
+          schema:
+            type: string
+    NotFound:
+      description: Resource not found
+      content:
+        text/plain:
+          schema:
+            type: string

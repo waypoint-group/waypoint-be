@@ -28,3 +28,10 @@ check: fmt vet test
 clean:
     rm -rf build/
     go clean
+
+generate-api:
+    go generate ./internal/api
+
+check-api: generate-api
+    git diff --exit-code -- internal/api
+    test -z "$(git ls-files --others --exclude-standard internal/api)"
