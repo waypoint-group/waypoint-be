@@ -30,7 +30,20 @@ func newRouter(database *db.Database, services *Services, cfg *Config) (*http.Se
 	if err != nil {
 		return nil, err
 	}
-	maxBytes := http.MaxBytesHandler(security.WithRequestMetadata(server), 1<<20)
+
+	// Generated router does not have implicit HEAD support. Add an adapter that
+	// redirects HEAD requests as GET to the router, restoring HEAD support.
+	headSupport := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			r = r.Clone(r.Context())
+			r.Method = http.MethodGet
+		}
+		server.ServeHTTP(w, r)
+	})
+	maxBytes := http.MaxBytesHandler(
+		security.WithRequestMetadata(headSupport),
+		1<<20,
+	)
 
 	mux := http.NewServeMux()
 
