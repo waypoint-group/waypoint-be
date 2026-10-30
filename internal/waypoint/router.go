@@ -41,7 +41,7 @@ func newRouter(database *db.Database, services *Services, cfg *Config) (*http.Se
 		server.ServeHTTP(w, r)
 	})
 	maxBytes := http.MaxBytesHandler(
-		security.WithRequestMetadata(headSupport),
+		headSupport,
 		1<<20,
 	)
 
