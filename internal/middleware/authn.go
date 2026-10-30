@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/golang-jwt/jwt/v5/request"
 )
 
 // JWTClaims contains the registered access token claims, as well as the email claim.
@@ -66,23 +65,6 @@ func DiscoverOIDCProvider(issuer string) (*OIDCProvider, error) {
 	}
 
 	return &provider, nil
-}
-
-// ExtractAndValidateJWT extracts a bearer token from the request's single
-// Authorization header and validates it with ValidateJWT.
-func ExtractAndValidateJWT(r *http.Request, jwtConfig JWTConfig) (*jwt.Token, *JWTClaims, error) {
-	// Forbid duplicate authorization headers.
-	headers := r.Header.Values("Authorization")
-	if len(headers) != 1 {
-		return nil, nil, fmt.Errorf("expected 1 Authorization header, got %d", len(headers))
-	}
-
-	raw, err := (request.BearerExtractor{}).ExtractToken(r)
-	if err != nil {
-		return nil, nil, fmt.Errorf("extract bearer token: %w", err)
-	}
-
-	return ValidateJWT(raw, jwtConfig)
 }
 
 // ValidateJWT verifies an RS256 access token's signature, issuer, audience,

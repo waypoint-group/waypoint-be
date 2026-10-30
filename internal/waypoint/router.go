@@ -25,13 +25,12 @@ type apiHandler struct {
 
 func newRouter(database *db.Database, services *Services, cfg *Config) (*http.ServeMux, error) {
 	handlers := &apiHandler{health.NewHandler(database), user.NewHandler(services.Users), workspace.NewHandler(services.Workspaces)}
-	server, err := api.NewServer(handlers, services.Users, api.WithErrorHandler(api.HandleError))
+	security := user.NewSecurity(services.Users, cfg.JWT)
+	server, err := api.NewServer(handlers, security, api.WithErrorHandler(api.HandleError))
 	if err != nil {
 		return nil, err
 	}
-	maxBytes := http.MaxBytesHandler(server, 1<<20)
-	requireIdentity := user.RequireIdentity(cfg.JWT)(maxBytes)
-	requireActor := services.Users.RequireActor(cfg.JWT)(maxBytes)
+	maxBytes := http.MaxBytesHandler(security.WithRequestMetadata(server), 1<<20)
 
 	mux := http.NewServeMux()
 
@@ -43,16 +42,16 @@ func newRouter(database *db.Database, services *Services, cfg *Config) (*http.Se
 	// TODO: ListUsers should be admin only.
 	mux.Handle("GET /users", maxBytes)
 	mux.Handle("GET /users/{id}", maxBytes)
-	mux.Handle("POST /users", requireIdentity)
-	mux.Handle("DELETE /users/{id}", requireActor)
-	mux.Handle("GET /me", requireIdentity)
+	mux.Handle("POST /users", maxBytes)
+	mux.Handle("DELETE /users/{id}", maxBytes)
+	mux.Handle("GET /me", maxBytes)
 
 	// Workspaces
-	mux.Handle("POST /workspaces", requireActor)
-	mux.Handle("GET /workspaces/{workspace_id}", requireActor)
-	mux.Handle("DELETE /workspaces/{workspace_id}", requireActor)
-	mux.Handle("POST /workspaces/{workspace_id}/users/{user_id}", requireActor)
-	mux.Handle("DELETE /workspaces/{workspace_id}/users/{user_id}", requireActor)
+	mux.Handle("POST /workspaces", maxBytes)
+	mux.Handle("GET /workspaces/{workspace_id}", maxBytes)
+	mux.Handle("DELETE /workspaces/{workspace_id}", maxBytes)
+	mux.Handle("POST /workspaces/{workspace_id}/users/{user_id}", maxBytes)
+	mux.Handle("DELETE /workspaces/{workspace_id}/users/{user_id}", maxBytes)
 
 	return mux, nil
 }
