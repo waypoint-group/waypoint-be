@@ -81,8 +81,6 @@ func responseError(err error) error {
 	switch {
 	case errors.Is(err, ErrForbidden):
 		status, public = http.StatusForbidden, ErrForbidden.Error()
-	case errors.Is(err, ErrInvalidID):
-		status, public = http.StatusBadRequest, ErrInvalidID.Error()
 	case errors.Is(err, ErrInvalidName):
 		status, public = http.StatusBadRequest, ErrInvalidName.Error()
 	case errors.Is(err, ErrWorkspaceNotFound):

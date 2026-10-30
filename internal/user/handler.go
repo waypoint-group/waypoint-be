@@ -26,9 +26,6 @@ func (h *Handler) CreateUser(ctx context.Context, req *api.CreateUserRequest) (a
 }
 
 func (h *Handler) GetUser(ctx context.Context, params api.GetUserParams) (api.GetUserRes, error) {
-	if uuid.UUID(params.ID) == (uuid.UUID{}) {
-		return nil, &api.HTTPError{Status: http.StatusBadRequest, Message: ErrInvalidId.Error()}
-	}
 	result, err := h.service.ReadUser(ctx, uuid.UUID(params.ID))
 	if err != nil {
 		return nil, responseError(err)
@@ -69,9 +66,6 @@ func (h *Handler) DeleteUser(ctx context.Context, params api.DeleteUserParams) (
 	if !ok {
 		return nil, errors.New("missing actor in context")
 	}
-	if uuid.UUID(params.ID) == (uuid.UUID{}) {
-		return nil, &api.HTTPError{Status: http.StatusBadRequest, Message: ErrInvalidId.Error()}
-	}
 	if err := h.service.DeleteUser(ctx, DeleteUserInput{UserID: uuid.UUID(params.ID), ActorID: actor}); err != nil {
 		return nil, responseError(err)
 	}
@@ -92,7 +86,7 @@ func responseError(err error) error {
 		status, public = http.StatusNotFound, err.Error()
 	case errors.Is(err, ErrEmailTaken), errors.Is(err, ErrUserNameTaken), errors.Is(err, ErrIdentityTaken):
 		status, public = http.StatusConflict, err.Error()
-	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity), errors.Is(err, ErrInvalidId):
+	case errors.Is(err, ErrInvalidEmail), errors.Is(err, ErrInvalidUserName), errors.Is(err, ErrInvalidDisplayName), errors.Is(err, ErrInvalidIdentity):
 		status, public = http.StatusBadRequest, "invalid request body: "+err.Error()
 	}
 	if status == http.StatusInternalServerError {
